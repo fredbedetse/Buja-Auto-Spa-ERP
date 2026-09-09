@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import customersRoutes from './routes/customers';
 import inventoryRoutes from './routes/inventory';
+import salesRoutes from './routes/sales';
 import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
 
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/sales', salesRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Root endpoint
@@ -63,6 +65,7 @@ app.get('/', (req, res) => {
       users: '/api/users',
       customers: '/api/customers',
       inventory: '/api/inventory',
+      sales: '/api/sales',
       sync: '/api/sync',
     },
     features: {
@@ -80,7 +83,7 @@ app.use((req, res) => {
     error: 'Endpoint not found',
     path: req.path,
     method: req.method,
-    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sync'],
+    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sales', '/api/sync'],
   });
 });
 

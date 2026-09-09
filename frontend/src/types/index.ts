@@ -71,6 +71,44 @@ export interface Product {
   syncStatus?: SyncStatus;
 }
 
+export type SaleStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
+export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE_MONEY' | 'LOAN';
+
+export interface SaleLine {
+  id?: string;
+  productId?: string | null;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Sale {
+  id: string;
+  invoiceNo: string;
+  customerId: string;
+  customerName: string;
+  saleDate: string;
+  status: SaleStatus;
+  paymentMethod: PaymentMethod;
+  subtotal: number;
+  discount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  paidAmount: number;
+  balance: number;
+  notes?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  items: SaleLine[];
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;

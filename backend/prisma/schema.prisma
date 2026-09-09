@@ -262,6 +262,56 @@ model Product {
   @@index([updatedAt])
 }
 
+
+// Phase 4: Sales / POS - documents with line items; stock is adjusted transactionally server-side
+model Sale {
+  id            String   @id @default(uuid())
+  invoiceNo     String   @unique // INV-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  customerId    String
+  customerName  String   // denormalized for offline display
+  saleDate      DateTime @default(now())
+  status        String   @default("COMPLETED") // DRAFT | COMPLETED | CANCELLED
+  paymentMethod String   @default("CASH")       // CASH | CARD | MOBILE_MONEY | LOAN
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  taxAmount     Float    @default(0)
+  total         Float    @default(0)
+  paidAmount    Float    @default(0)
+  balance       Float    @default(0)
+  notes         String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  items         SaleItem[]
+
+  @@index([customerId])
+  @@index([saleDate])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model SaleItem {
+  id          String  @id @default(uuid())
+  saleId      String
+  productId   String?
+  productName String
+  sku         String?
+  quantity    Int
+  unitPrice   Float
+  lineTotal   Float
+
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
 // Placeholder for future business modules - foundation only
 // These will be expanded in next phases but defined now for sync architecture
 

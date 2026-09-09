@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
+import { buildSaleTxn } from './sales';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
@@ -469,6 +470,69 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Sale') {
+          const existing = await prisma.sale.findFirst({ where: { id: entityId }, include: { items: true } });
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Entity already exists', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Sale already exists', conflictData: JSON.stringify({ serverData: existing }) } });
+              continue;
+            }
+            try {
+              const { deviceId: _dd, id: _sid, invoiceNo, ...saleInput } = data || {};
+              const sale = await prisma.$transaction(async (tx) => buildSaleTxn(tx, {
+                id: entityId,
+                invoiceNo,
+                deviceId,
+                customerId: saleInput.customerId,
+                saleDate: saleInput.saleDate,
+                status: saleInput.status || 'COMPLETED',
+                paymentMethod: saleInput.paymentMethod || 'CASH',
+                discount: saleInput.discount || 0,
+                taxRate: saleInput.taxRate || 0,
+                paidAmount: saleInput.paidAmount,
+                notes: saleInput.notes,
+                items: (saleInput.items || []).map((i: any) => ({
+                  productId: i.productId || null,
+                  productName: i.productName || 'Item',
+                  sku: i.sku || null,
+                  quantity: Math.max(1, parseInt(i.quantity, 10) || 1),
+                  unitPrice: Number(i.unitPrice) || 0,
+                })),
+              }, { checkStock: true }));
+
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify({ invoiceNo: sale.invoiceNo, total: sale.total }), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: 1, invoiceNo: sale.invoiceNo });
+            } catch (saleErr: any) {
+              const reason = saleErr.code === 'INSUFFICIENT_STOCK' ? saleErr.message : (saleErr.message || 'Sale could not be applied');
+              results.push({ entityType, entityId, status: 'FAILED', error: reason });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: reason, payload: JSON.stringify(data) } });
+            }
+
+          } else if (operation === 'UPDATE') {
+            results.push({ entityType, entityId, status: 'FAILED', error: 'Sales are immutable; cancel and re-create instead of editing' });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'FAILED', version: existing?.version || 0, clientVersion, errorMessage: 'Sales are immutable', payload: JSON.stringify(data) } });
+
+          } else if (operation === 'DELETE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already deleted' });
+              continue;
+            }
+            await prisma.$transaction(async (tx) => {
+              if (existing.status === 'COMPLETED') {
+                for (const it of existing.items) {
+                  if (it.productId) {
+                    await tx.product.update({ where: { id: it.productId }, data: { stockQuantity: { increment: it.quantity }, version: { increment: 1 }, lastSyncedAt: new Date() } });
+                  }
+                }
+              }
+              await tx.sale.update({ where: { id: existing.id }, data: { isDeleted: true, status: 'CANCELLED', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else {
           // For other entity types (future modules), generic handling
           // Log as synced for now - actual entity handling will be implemented per module
@@ -639,6 +703,24 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: c,
         version: c.version,
         timestamp: c.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Sale')) {
+      const sales = await prisma.sale.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+        include: { items: true },
+      });
+
+      changes.push(...sales.map(sl => ({
+        entityType: 'Sale',
+        entityId: sl.id,
+        operation: 'UPDATE',
+        data: sl,
+        version: sl.version,
+        timestamp: sl.updatedAt.toISOString(),
       })));
     }
 

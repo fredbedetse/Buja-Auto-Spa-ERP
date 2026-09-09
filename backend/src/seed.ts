@@ -356,6 +356,93 @@ async function seed() {
     console.log(`ℹ️ Products already present (${existingProducts}), skipping`);
   }
 
+  // Seed demo sales (Phase 4) - only when table is empty
+  const existingSales = await prisma.sale.count({ where: { isDeleted: false } });
+  if (existingSales === 0) {
+    const customers = await prisma.customer.findMany({ where: { isDeleted: false } });
+    const byName = new Map(customers.map(c => [c.name, c]));
+    const products = await prisma.product.findMany({ where: { isDeleted: false } });
+    const bySku = new Map(products.map(pr => [pr.sku, pr]));
+
+    const saleDefs = [
+      { customer: 'Hakizimana Jean', date: '2026-09-02T09:30:00Z', payment: 'CASH', discount: 0, paid: null,
+        items: [{ sku: 'ENG-2210', q: 2 }, { sku: 'ACC-5510', q: 1 }] },
+      { customer: 'Ngabo Transports SARL', date: '2026-09-04T14:10:00Z', payment: 'MOBILE_MONEY', discount: 25000, paid: 300000,
+        items: [{ sku: 'BRK-4501', q: 3 }, { sku: 'FLD-9001', q: 2 }] },
+      { customer: 'Société BUJA Logistics', date: '2026-09-05T11:05:00Z', payment: 'CARD', discount: 0, paid: null,
+        items: [{ sku: 'TYR-1020', q: 2 }, { sku: 'ENG-2211', q: 1 }] },
+      { customer: 'Bigirimana Emmanuel', date: '2026-09-07T16:40:00Z', payment: 'CASH', discount: 0, paid: null,
+        items: [{ sku: 'ACC-5510', q: 2 }, { sku: 'ELC-7702', q: 2 }] },
+      { customer: 'Coopérative Kayanza Farm', date: '2026-09-08T10:00:00Z', payment: 'CASH', discount: 0, paid: null,
+        items: [{ sku: 'ENG-3320', q: 3 }] },
+      { customer: 'Niyonsaba Marie', date: '2026-09-08T15:20:00Z', payment: 'MOBILE_MONEY', discount: 0, paid: null,
+        items: [{ sku: 'WAS-0001', q: 8 }] },
+      // a draft: not deducted from stock, demonstrates DRAFT status
+      { customer: 'Coopérative Kayanza Farm', date: '2026-09-08T17:00:00Z', payment: 'CASH', discount: 0, paid: 0, status: 'DRAFT',
+        items: [{ sku: 'BODY-8811', q: 4 }] },
+    ];
+
+    let seq = 1;
+    let applied = 0;
+    for (const def of saleDefs) {
+      const cust = byName.get(def.customer);
+      if (!cust) continue;
+      const lines: any[] = [];
+      let subtotal = 0;
+      let stockOk = true;
+      for (const li of def.items) {
+        const pr = bySku.get(li.sku);
+        if (!pr) { stockOk = false; continue; }
+        const lineTotal = pr.sellingPrice * li.q;
+        subtotal += lineTotal;
+        lines.push({ productId: pr.id, productName: pr.name, sku: pr.sku, quantity: li.q, unitPrice: pr.sellingPrice, lineTotal });
+      }
+      if (!lines.length) continue;
+      if (def.status !== 'DRAFT') {
+        for (const li of def.items) {
+          const pr = bySku.get(li.sku);
+          if (pr && pr.stockQuantity < li.q) { stockOk = false; break; }
+        }
+        if (!stockOk) { console.log(`ℹ️ Skipping sale ${seq}: insufficient stock for current quantities`); seq++; continue; }
+      }
+      const discount = Math.min(def.discount, subtotal);
+      const total = subtotal - discount;
+      const paid = def.paid === null ? total : Math.min(def.paid, total);
+      const status = def.status || 'COMPLETED';
+
+      await prisma.sale.create({
+        data: {
+          invoiceNo: `INV-2026-${String(seq).padStart(5, '0')}`,
+          customerId: cust.id,
+          customerName: cust.name,
+          saleDate: new Date(def.date),
+          status,
+          paymentMethod: def.payment,
+          subtotal,
+          discount,
+          taxRate: 0,
+          taxAmount: 0,
+          total,
+          paidAmount: paid,
+          balance: total - paid,
+          items: { create: lines },
+        },
+      });
+
+      if (status === 'COMPLETED') {
+        for (const li of def.items) {
+          const pr = bySku.get(li.sku);
+          if (pr) await prisma.product.update({ where: { id: pr.id }, data: { stockQuantity: { decrement: li.q } } });
+        }
+      }
+      applied++;
+      seq++;
+    }
+    console.log(`✅ Seeded ${applied} demo sales (6 completed with stock decrements + 1 draft)`);
+  } else {
+    console.log(`ℹ️ Sales already present (${existingSales}), skipping`);
+  }
+
   console.log('🎉 Seed completed successfully!');
 }
 

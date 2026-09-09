@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { 
   Users, Package, Truck, Wrench, Droplets, Zap, 
-  TrendingUp, AlertTriangle, Database, Wifi, 
+  TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
   Activity, HardDrive, Cloud, Smartphone
 } from 'lucide-react';
@@ -17,6 +17,8 @@ interface SystemStats {
   customers: number;
   products: number;
   lowStock: number;
+  sales: number;
+  balanceOut: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -33,6 +35,8 @@ export default function Dashboard() {
     customers: 0,
     products: 0,
     lowStock: 0,
+    sales: 0,
+    balanceOut: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -80,6 +84,17 @@ export default function Dashboard() {
           serverLowStock = null;
         }
 
+        let serverSales: number | null = null;
+        let serverBalance: number | null = null;
+        try {
+          const sstats = await apiClient.get<any>('/sales/stats');
+          serverSales = sstats.total ?? null;
+          serverBalance = sstats.balanceOutstanding ?? null;
+        } catch {
+          serverSales = null;
+          serverBalance = null;
+        }
+
         const localCustomersCount = await localDB.customers.count();
         const localProducts = await localDB.inventory.toArray();
         const localLow = localProducts.filter(pr => pr.stockQuantity <= pr.reorderLevel).length;
@@ -89,6 +104,8 @@ export default function Dashboard() {
           customers: serverCustomers ?? localCustomersCount,
           products: serverProducts ?? localProducts.length,
           lowStock: serverLowStock ?? localLow,
+          sales: serverSales ?? (await localDB.sales.count()),
+          balanceOut: serverBalance ?? 0,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -106,13 +123,14 @@ export default function Dashboard() {
   }, [syncStatus.pending, syncStatus.failed]);
 
   const modules: Array<{ name: string; icon: any; color: string; count: string; sub?: string; desc: string; href: string; implemented?: boolean }> = [
-    { name: 'Truck Parts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? `${stats.lowStock} low stock` : undefined, desc: 'Inventory & Sales', href: '/inventory', implemented: true },
+    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management', href: '/customers', implemented: true },
+{ name: 'Truck Parts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? `${stats.lowStock} low stock` : undefined, desc: 'Inventory & Sales', href: '/inventory', implemented: true },
+    { name: 'Sales / POS', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? `${Math.round(stats.balanceOut).toLocaleString('en-US')} BIF outstanding` : undefined, desc: 'Invoiced sales & receipts', href: '/sales', implemented: true },
     { name: 'Maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'Vehicle Service', href: '/maintenance' },
     { name: 'Car Wash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'Wash Services', href: '/carwash' },
     { name: 'EV Rentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'Electric Fleet', href: '/ev-rentals' },
     { name: 'Truck Rentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'Heavy Rentals', href: '/truck-rentals' },
-    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management', href: '/customers', implemented: true },
-  ];
+];
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
@@ -279,7 +297,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Business Modules</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">2 modules live • more coming</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">3 modules live • more coming</span>
           </span>
         </div>
         

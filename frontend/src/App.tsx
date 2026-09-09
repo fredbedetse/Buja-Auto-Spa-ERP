@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import UsersPage from './pages/Users';
 import CustomersPage from './pages/Customers';
 import InventoryPage from './pages/Inventory';
+import SalesPage from './pages/Sales';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
 
@@ -74,7 +75,7 @@ export default function App() {
           <Route path="employees" element={<NotImplemented />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<NotImplemented />} />
-          <Route path="sales" element={<NotImplemented />} />
+          <Route path="sales" element={<SalesPage />} />
           <Route path="invoices" element={<NotImplemented />} />
           <Route path="payments" element={<NotImplemented />} />
           <Route path="expenses" element={<NotImplemented />} />

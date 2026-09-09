@@ -170,6 +170,12 @@ class SyncEngine {
                   syncStatus: 'SYNCED',
                   ...(result.version ? { version: result.version } : {}),
                 } as any);
+              } else if (result.entityType === 'Sale') {
+                // Server assigned the canonical invoiceNo - keep it
+                const upd: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) upd.version = result.version;
+                if ((result as any).invoiceNo) upd.invoiceNo = (result as any).invoiceNo;
+                await localDB.sales.update(result.entityId, upd);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -310,6 +316,22 @@ class SyncEngine {
                 continue;
               }
               await localDB.inventory.put({
+                ...change.data,
+                syncStatus: 'SYNCED',
+                _dirty: false,
+              });
+            }
+            pulled++;
+          } else if (change.entityType === 'Sale') {
+            if (change.operation === 'DELETE') {
+              await localDB.sales.delete(change.entityId);
+            } else {
+              const existing = await localDB.sales.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.sales.put({
                 ...change.data,
                 syncStatus: 'SYNCED',
                 _dirty: false,
@@ -510,6 +532,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Product') {
           await localDB.inventory.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Sale') {
+          await localDB.sales.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

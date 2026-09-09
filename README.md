@@ -76,6 +76,30 @@ This ERP is designed to **continue operating when internet is unavailable** and 
       create/edit modal, stock highlighting, sync chips, offline-first writes
 - [x] Dashboard: Truck Parts card live count + low-stock alert; module cards now navigate
 
+## ✅ Phase 4 Implemented - Sales / Point of Sale
+
+- [x] `Sale` + `SaleItem` models in Prisma (invoice no, customer link, status DRAFT/COMPLETED/CANCELLED,
+      payment method, BIF totals & balance, sync metadata) + migration
+- [x] `/api/sales`: list w/ search + status + date filters + pagination, `/stats` (today/month revenue,
+      outstanding balance), GET/:id, POST (server recomputes line prices & totals from the product catalog —
+      client-submitted prices are never trusted), DELETE = cancel (soft-delete + stock restored + SyncLog)
+- [x] Stock integration: COMPLETED sales decrement product stock (and bump `Product.version` so concurrent
+      offline product edits surface as `VERSION_CONFLICT`); over-sell rejected with `409 INSUFFICIENT_STOCK`
+      incl. per-product details; DRAFT sales never touch stock
+- [x] Server-assigned invoice numbers `INV-YYYY-NNNNN` — offline clients submit provisional `TMP-*` ids
+      that are renamed on sync, and the Dexie record is updated in place
+- [x] Sales are immutable: sync push rejects UPDATE; UI cancels + re-creates instead
+- [x] Sync engine handles `Sale` CREATE/DELETE push + pull (items embedded), conflict SERVER_WINS
+- [x] Frontend `Sales` page: revenue/balance summary chips, invoice+customer search, status filter,
+      sync chips, POS modal (customer picker, product search with live stock guards, qty steppers,
+      discount/payment/paid with live totals), sale detail viewer, cancel with stock restore,
+      full offline create → queue → resync flow
+- [x] Dashboard: Sales/POS module card (count + outstanding balance), "3 modules live" status chip;
+      Sales nav entry no longer "Soon"
+- [x] QA: 15/15 Playwright steps (online create → Synced, offline create → Pending → resync → canonical
+      invoice, cancel → stock restored server-side, detail view, zero console errors) + curl suite for
+      409 oversell, immutability & stats endpoints
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -172,7 +196,8 @@ buja-auto-spa-erp/
 After foundation verification:
 - ~~Customers module~~ (completed in Phase 2)
 - ~~Inventory / Truck Parts~~ (completed in Phase 3)
-- Sales / Purchases
+- ~~Sales / POS~~ (completed in Phase 4)
+- Purchases / Suppliers
 - Invoices / Payments
 - Car Wash
 - Maintenance
