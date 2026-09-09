@@ -49,7 +49,7 @@ const navigation = [
   { key: 'nav.maintenance', href: '/maintenance', icon: Wrench, module: 'maintenance:read' },
   { key: 'nav.evRentals', href: '/ev-rentals', icon: Zap, module: 'evrentals:read' },
   { key: 'nav.truckRentals', href: '/truck-rentals', icon: Truck, module: 'truckrentals:read' },
-  { key: 'nav.reports', href: '/reports', icon: BarChart3, module: 'reports:read', soon: true },
+  { key: 'nav.reports', href: '/reports', icon: BarChart3, module: 'reports:read' },
   { key: 'nav.usersRoles', href: '/users', icon: Shield, module: 'users:read' },
   { key: 'nav.settings', href: '/settings', icon: Settings, module: 'settings:read', soon: true },
 ];

@@ -424,6 +424,38 @@ buja-auto-spa-erp/
       cashier fallback). Full regression after purge: tour 24/24, wash 31/31, maint 32/32,
       payments 38/38, employees 27/27, brand 8/8, smoke 10/10 - **199/199**.
 
+## ✅ Phase 12 Implemented - Reports (final module)
+
+- [x] **Cross-module analytics board** (`/reports`): one read-only aggregation endpoint
+      `GET /api/reports/summary?from&to` (inclusive window, default last 30 days, capped 366)
+      composes the canonical BIF rows from every module - car wash (completed), maintenance
+      (completed), rentals (returned, split EV/TRUCK) and POS sales (completed) - into billed
+      revenue, per-day buckets for the chart, cash received with method split (payments, VOID
+      excluded), top products (POS lines + maintenance parts consumed), receivables/payables
+      aligned with the sales/purchases modules' own definitions, payroll, stock value and
+      fleet + rental utilization (occupied fleet-days over capacity in the window).
+- [x] **Strict server semantics**: every number recomputed from source rows on read (no cached
+      report tables); `status: COMPLETED/RECEIVED` filters match what the source modules call
+      revenue, sums reconcile exactly (`sum(daily.total) == revenue.total` is a test assertion);
+      bad/inverted/oversized windows are 400s, and `reports:read|manage` gates the endpoint
+      (manager + accountant yes, cashier no - verified 403/401).
+- [x] **Offline-capable by recomputation**: nothing here is writable, so instead of a sync
+      surface the page runs the identical aggregation in the browser over its Dexie cache
+      whenever the API is unreachable (or access is denied) - with a visible
+      "local figures" marker so finance knows which source they are looking at.
+- [x] **Board UI**: window presets (7/30/90/YTD + custom dates), 6 KPI cards, inline-SVG
+      stacked bar chart (per-module colors, day tooltips, peak-day caption), module share
+      table, cash-by-method bars, top-8 products, utilization meters - all in EN/FR and
+      BIF/USD at the fixed 6,000 peg; one-click CSV export (Excel-safe UTF-8 BOM) of the whole
+      report including the daily series.
+- [x] Verification: curl contract battery (baselines reconcile with every module's own stats
+      endpoint, validations, RBAC) + **new Playwright suite `reports.js` 19/19** (KPI parity
+      against the 30-day demo baseline, chart render, presets, USD `$591.58`, FR labels,
+      CSV download event, offline local-parity fallback, cashier graceful view, zero JS errors).
+- [x] Full regression matrix with purge between suites: tour 24, wash 31, maint 32, payments 38,
+      employees 27, brand 8, rentals 29, reports 19 + smoke 10 - **218/218 green**; all demo
+      baselines unchanged (Reports is read-only) and the module chip reads "13 modules live".
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -437,9 +469,11 @@ After foundation verification:
 - ~~Car Wash~~ (completed in Phase 9)
 - ~~Maintenance~~ (completed in Phase 10)
 - ~~EV Rentals / Truck Rentals~~ (completed in Phase 11)
-- Reports
+- ~~Reports~~ (completed in Phase 12 - the last operational module)
+- Expenses and Settings remain as "Soon" placeholders
 
-All modules will use same offline-first pattern: local IndexedDB + sync queue + cloud sync.
+All data-entry modules use the same offline-first pattern: local IndexedDB + sync queue + cloud sync.
+Reports needs no sync surface: it recomputes from local rows when offline.
 
 ## 🌍 Deployment
 
