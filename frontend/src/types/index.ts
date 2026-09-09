@@ -195,6 +195,58 @@ export interface Vehicle {
   syncStatus?: SyncStatus;
 }
 
+export interface Payment {
+  id: string;
+  paymentNo: string; // canonical RCPT-YYYY-NNNNN (TMP-xxx while offline)
+  saleId: string;
+  saleInvoiceNo?: string | null;
+  customerName?: string | null;
+  amount: number; // canonical BIF
+  paymentMethod: 'CASH' | 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'CHEQUE';
+  paymentDate: string;
+  reference?: string | null;
+  notes?: string | null;
+  status: 'COMPLETED' | 'VOID';
+  voidReason?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus?: SyncStatus;
+}
+
+export interface InvoiceLine {
+  id: string;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNo: string;
+  customerId: string;
+  customerName: string;
+  saleDate: string;
+  status: string; // DRAFT | COMPLETED | CANCELLED (from Sale)
+  paymentMethod: string;
+  subtotal: number;
+  discount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  paidAmount: number;
+  balance: number;
+  notes?: string | null;
+  billingStatus: 'DRAFT' | 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  items?: InvoiceLine[];
+  payments?: Payment[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Employee {
   id: string;
   firstName: string;

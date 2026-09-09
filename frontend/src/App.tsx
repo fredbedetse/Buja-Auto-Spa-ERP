@@ -11,6 +11,8 @@ import SalesPage from './pages/Sales';
 import SuppliersPage from './pages/Suppliers';
 import VehiclesPage from './pages/Vehicles';
 import EmployeesPage from './pages/Employees';
+import InvoicesPage from './pages/Invoices';
+import PaymentsPage from './pages/Payments';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -77,6 +79,8 @@ export default function App() {
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="vehicles" element={<VehiclesPage />} />
           <Route path="employees" element={<EmployeesPage />} />
+          <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="payments" element={<PaymentsPage />} />
           <Route path="employees" element={<NotImplemented />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />

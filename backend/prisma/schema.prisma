@@ -461,3 +461,30 @@ model Employee {
   @@index([lastName])
   @@index([updatedAt])
 }
+
+model Payment {
+  id            String   @id @default(uuid())
+  paymentNo     String   @unique // RCPT-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  saleId        String
+  saleInvoiceNo String?
+  customerName  String?
+  amount        Float
+  paymentMethod String   @default("CASH") // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  paymentDate   DateTime
+  reference     String?
+  notes         String?
+  status        String   @default("COMPLETED") // COMPLETED | VOID
+  voidReason    String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([saleId])
+  @@index([paymentDate])
+  @@index([status])
+  @@index([updatedAt])
+}

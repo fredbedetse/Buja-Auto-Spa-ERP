@@ -4,7 +4,7 @@ import {
   TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
   Activity, HardDrive, Cloud, Smartphone, PackageCheck,
-  UserCog,
+  UserCog, FileText, CreditCard
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -28,6 +28,9 @@ interface SystemStats {
   vehicleInUse: number;
   employeeCount: number;
   empPayroll: number;
+  invoiceCount: number;
+  invOutstanding: number;
+  payMonth: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -55,6 +58,9 @@ export default function Dashboard() {
     vehicleInUse: 0,
     employeeCount: 0,
     empPayroll: 0,
+    invoiceCount: 0,
+    invOutstanding: 0,
+    payMonth: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -110,6 +116,9 @@ export default function Dashboard() {
         let serverVehInUse: number | null = null;
         let serverEmployees: number | null = null;
         let serverEmpPayroll: number | null = null;
+        let serverInvoices: number | null = null;
+        let serverInvOut: number | null = null;
+        let serverPayMonth: number | null = null;
         try {
           const sstats = await apiClient.get<any>('/sales/stats');
           serverSales = sstats.total ?? null;
@@ -129,6 +138,7 @@ export default function Dashboard() {
         }
         serverVehicles = serverVehInUse = null;
         serverEmployees = serverEmpPayroll = null;
+        serverInvoices = serverInvOut = serverPayMonth = null;
         try {
           const vstats = await apiClient.get<any>('/vehicles/stats');
           serverVehicles = vstats.total ?? null;
@@ -144,6 +154,21 @@ export default function Dashboard() {
         } catch {
           serverEmployees = null;
           serverEmpPayroll = null;
+        }
+        try {
+          const istat = await apiClient.get<any>('/invoices/stats');
+          serverInvoices = istat.total ?? null;
+          const payStat = await apiClient.get<any>('/payments/stats');
+          serverPayMonth = payStat.receivedMonth ?? null;
+        } catch {
+          serverInvoices = null;
+          serverPayMonth = null;
+        }
+        try {
+          const sstats2 = await apiClient.get<any>('/sales/stats');
+          serverInvOut = sstats2.balanceOutstanding ?? null;
+        } catch {
+          serverInvOut = null;
         }
 
         const localCustomersCount = await localDB.customers.count();
@@ -163,6 +188,9 @@ export default function Dashboard() {
           vehicleInUse: serverVehInUse ?? 0,
           employeeCount: serverEmployees ?? (await localDB.employees.count()),
           empPayroll: serverEmpPayroll ?? 0,
+          invoiceCount: serverInvoices ?? (await localDB.sales.count()),
+          invOutstanding: serverInvOut ?? 0,
+          payMonth: serverPayMonth ?? 0,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -186,6 +214,8 @@ export default function Dashboard() {
     { name: 'dash.purchasesName', icon: PackageCheck, color: 'from-teal-500 to-emerald-500', count: String(stats.purchases), sub: stats.owedOut > 0 ? t('dash.purchasesSub', { money: fmtBif(stats.owedOut) }) : undefined, desc: 'dash.purchasesDesc', href: '/purchases', implemented: true },
     { name: 'dash.vehiclesName', icon: Truck, color: 'from-amber-500 to-orange-600', count: String(stats.vehicleCount), sub: stats.vehicleInUse > 0 ? t('dash.vehiclesSub', { n: stats.vehicleInUse }) : undefined, desc: 'dash.vehiclesDesc', href: '/vehicles', implemented: true },
     { name: 'nav.employees', icon: UserCog, color: 'from-rose-500 to-pink-600', count: String(stats.employeeCount), sub: stats.empPayroll > 0 ? t('dash.empPayroll', { money: fmtBif(stats.empPayroll) }) : undefined, desc: 'dash.employeesDesc', href: '/employees', implemented: true },
+{ name: 'dash.invoicesName', icon: FileText, color: 'from-slate-500 to-indigo-600', count: String(stats.invoiceCount), sub: stats.invOutstanding > 0 ? t('dash.invoicesSub', { n: fmtBif(stats.invOutstanding) }) : undefined, desc: 'dash.invoicesDesc', href: '/invoices', implemented: true },
+{ name: 'dash.paymentsName', icon: CreditCard, color: 'from-emerald-500 to-green-600', count: fmtBif(stats.payMonth), sub: undefined, desc: 'dash.paymentsDesc', href: '/payments', implemented: true },
 { name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
     { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'dash.washDesc', href: '/carwash' },
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
@@ -357,7 +387,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 6 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 8 })}</span>
           </span>
         </div>
         

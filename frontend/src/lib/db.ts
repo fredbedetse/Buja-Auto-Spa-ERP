@@ -1,7 +1,7 @@
 // Offline-first local database using Dexie (IndexedDB)
 // This is the primary offline storage, NOT localStorage
 import Dexie, { type Table } from 'dexie';
-import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
+import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, Payment, Invoice, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
 
 export interface LocalUser extends User {
   _localId?: string;
@@ -40,6 +40,16 @@ export interface LocalEmployee extends Employee {
   _dirty?: boolean;
 }
 
+export interface LocalInvoice extends Invoice {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
+export interface LocalPayment extends Payment {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
 export interface LocalSyncMetadata extends SyncMetadata {
   id?: string;
 }
@@ -70,6 +80,8 @@ class BujaLocalDB extends Dexie {
   purchases!: Table<LocalPurchase, string>;
   vehicles!: Table<LocalVehicle, string>;
   employees!: Table<LocalEmployee, string>;
+  payments!: Table<LocalPayment, string>;
+  invoices!: Table<LocalInvoice, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -114,6 +126,16 @@ class BujaLocalDB extends Dexie {
     // Version 6 - Employees / Payroll register (Phase 7)
     this.version(6).stores({
       employees: 'id, lastName, position, employmentStatus, isActive, updatedAt, syncStatus',
+    });
+
+    // Version 7 - Payments / receipts (Phase 8)
+    this.version(7).stores({
+      payments: 'id, paymentNo, saleId, status, paymentDate, updatedAt, syncStatus',
+    });
+
+    // Version 8 - Invoices billing cache (read-only mirror for offline)
+    this.version(8).stores({
+      invoices: 'id, invoiceNo, billingStatus, saleDate, updatedAt',
     });
   }
 

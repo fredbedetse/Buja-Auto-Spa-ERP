@@ -284,6 +284,41 @@ buja-auto-spa-erp/
       (delete-then-re-register revive check added) and the shared-file changes were re-verified with
       a 10/10 cross-module smoke (RBAC, offline toggles, FR, auth error handling).
 
+## ✅ Phase 8 Implemented - Invoices & Payments
+
+- [x] **Payments module** (`/payments`) - money-in register: receipts (`RCPT-YYYY-NNNNN`) posted
+      against completed sales; CASH / Mobile money / Bank transfer / Cheque with reference + teller
+      notes; stat cards (received today / this month / all-time / outstanding) all currency-aware;
+      search spans receipt, invoice, customer & reference; VOID rows visible via the include-void
+      toggle with strikethrough + badge, hidden from every stat.
+- [x] **Invoices module** (`/invoices`) - billing view derived from Sales (single source of truth,
+      no second document table): billing status chips computed server-side over the ledger
+      (Draft / Unpaid / Partially paid / Paid / Overdue >30d / Cancelled), open & overdue counts,
+      outstanding total; document detail modal renders line items, totals block and the receipts
+      posted against it, and can capture a payment right from the invoice.
+- [x] **Ledger coupling**: every receipt mutates the parent sale (`paidAmount`, `balance`,
+      version bump) inside a transaction and logs both rows to the sync stream; overpayment is
+      rejected client- and server-side (`400 EXCEEDS_BALANCE` with the live balance in `details`);
+      payments on draft or cancelled sales are blocked (`409 SALE_NOT_COMPLETED` /
+      `SALE_CANCELLED`). Receipts are immutable - `DELETE` *voids* (reverses the ledger, records a
+      reason) and re-voiding is idempotent; an offline-recorded receipt replays through the sync
+      queue with the same balance guard.
+- [x] **Offline-first**: `Payment` push branch (CREATE replays with ledger + canonical `paymentNo`
+      handed back to the client so a `TMP-` id becomes `RCPT-` after sync; UPDATE refuses edits;
+      DELETE replays as a reversing void), pull block + Dexie v7 `payments` store and a v8
+      read-only `invoices` mirror cache so the picker and registry work with zero connectivity.
+- [x] **RBAC**: `payments:read|manage`, `invoices:read|manage` (42 permissions) - Cashier collects
+      money, Manager/Admin manage everything, Viewer gets 403 on the API and no nav entry.
+- [x] Demo data: two seeded receipts on the partially-paid invoice (mobile-money LUMO ref + cash)
+      and a demo Cashier login (`cashier@bujaautospa.bi` / `Cashier@123`) to exercise the role split.
+- [x] QA: Playwright suite 38/38 (registry chips & stats, search + billing filters, detail modal,
+      overpay guard, cloud receipt capture with modal refresh, void restores the ledger exactly,
+      fully-offline receipt -> "Pending sync" -> "Sync now" -> canonical number + cloud stats
+      update, USD $50.00 formatting, FR labels, cashier access, zero console errors) + curl
+      contract suite (404 / 409 draft / 400 exceeds-balance, idempotent replay, double-void,
+      sync push/pull replay round-trip, viewer 403s). Regression: employees suite 27/27 and the
+      cross-module smoke 10/10 re-run clean (module chip expectation bumped to "8 modules live").
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -293,7 +328,7 @@ After foundation verification:
 - ~~Suppliers / Purchases~~ (completed in Phase 5)
 - ~~Vehicles / Fleet~~ (completed in Phase 6)
 - ~~Employees / Payroll~~ (completed in Phase 7)
-- Invoices / Payments
+- ~~Invoices / Payments~~ (completed in Phase 8)
 - Car Wash
 - Maintenance
 - EV Rentals / Truck Rentals

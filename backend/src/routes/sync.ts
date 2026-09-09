@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
+import { nextPaymentNo } from '../routes/payments';
 import { buildSaleTxn } from './sales';
 import { buildPurchaseTxn } from './purchases';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -670,6 +671,68 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Payment') {
+          const existing = await prisma.payment.findUnique({ where: { id: entityId } });
+
+          if (operation === 'CREATE') {
+            if (existing) {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version, paymentNo: existing.paymentNo });
+              continue;
+            }
+            const { deviceId: _pd, id: _pid, paymentNo: _pno, saleId, paymentDate, amount, ...pRest } = data || {};
+            const sale = await prisma.sale.findFirst({ where: { id: saleId, isDeleted: false } });
+            if (!sale) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Invoice not found on server' });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: 'Invoice not found', payload: JSON.stringify(data) } });
+              continue;
+            }
+            const bal = Math.max(0, sale.balance ?? 0);
+            if (!(amount > 0) || amount > bal + 0.001) {
+              const reason = amount > bal + 0.001 ? `Exceeds balance (${bal})` : 'Invalid amount';
+              results.push({ entityType, entityId, status: 'FAILED', error: reason });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: reason, payload: JSON.stringify(data) } });
+              continue;
+            }
+            const pno = await nextPaymentNo();
+            const created = await prisma.$transaction(async (tx) => {
+              const p = await tx.payment.create({
+                data: {
+                  id: entityId, paymentNo: pno, saleId: sale.id, saleInvoiceNo: sale.invoiceNo, customerName: sale.customerName,
+                  amount, paymentMethod: pRest.paymentMethod || 'CASH',
+                  paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+                  reference: pRest.reference || null, notes: pRest.notes || null,
+                  lastSyncedAt: new Date(), deviceId,
+                },
+              });
+              const paid = (sale.paidAmount || 0) + p.amount;
+              const updatedSale = await tx.sale.update({ where: { id: sale.id }, data: { paidAmount: paid, balance: Math.max(0, sale.total - paid), version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+              await tx.syncLog.create({ data: { userId, deviceId, entityType: 'Sale', entityId: sale.id, operation: 'UPDATE', status: 'SYNCED', version: updatedSale.version, syncedAt: new Date() } });
+              return p;
+            });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: 1, paymentNo: created.paymentNo });
+
+          } else if (operation === 'UPDATE') {
+            results.push({ entityType, entityId, status: 'FAILED', error: 'Receipts are immutable; void and re-record instead of editing' });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'FAILED', version: existing?.version || 0, clientVersion, errorMessage: 'Receipts are immutable', payload: JSON.stringify(data) } });
+
+          } else if (operation === 'DELETE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already removed' });
+              continue;
+            }
+            if (existing.status === 'COMPLETED') {
+              const sale = await prisma.sale.findUnique({ where: { id: existing.saleId } });
+              if (sale && !sale.isDeleted) {
+                const paid = Math.max(0, (sale.paidAmount || 0) - existing.amount);
+                await prisma.sale.update({ where: { id: sale.id }, data: { paidAmount: paid, balance: Math.max(0, sale.total - paid), version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+              }
+            }
+            await prisma.payment.update({ where: { id: entityId }, data: { status: 'VOID', voidReason: 'Voided offline', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Employee') {
           const existing = await prisma.employee.findUnique({ where: { id: entityId } });
 
@@ -1025,6 +1088,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: vh,
         version: vh.version,
         timestamp: vh.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Payment')) {
+      const payments = await prisma.payment.findMany({
+        where: { updatedAt: { gt: lastSyncDate } },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...payments.map(pm => ({
+        entityType: 'Payment',
+        entityId: pm.id,
+        operation: 'UPDATE',
+        data: pm,
+        version: pm.version,
+        timestamp: pm.updatedAt.toISOString(),
       })));
     }
 

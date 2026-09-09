@@ -200,6 +200,12 @@ class SyncEngine {
                   syncStatus: 'SYNCED',
                   ...(result.version ? { version: result.version } : {}),
                 } as any);
+              } else if (result.entityType === 'Payment') {
+                // Server assigned the canonical receipt number - keep it
+                const upd: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) upd.version = result.version;
+                if ((result as any).paymentNo) upd.paymentNo = (result as any).paymentNo;
+                await localDB.payments.update(result.entityId, upd);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -384,6 +390,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.vehicles.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'Payment') {
+            if (change.operation === 'DELETE') {
+              await localDB.payments.delete(change.entityId);
+            } else {
+              const existing = await localDB.payments.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.payments.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'Employee') {
@@ -634,6 +652,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Employee') {
           await localDB.employees.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Payment') {
+          await localDB.payments.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

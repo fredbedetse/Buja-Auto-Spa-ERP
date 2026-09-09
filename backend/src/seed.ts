@@ -122,6 +122,7 @@ async function seed() {
         'purchases:manage',
         'invoices:manage',
         'payments:read',
+        'payments:manage',
         'carwash:manage',
         'maintenance:manage',
         'evrentals:manage',
@@ -311,6 +312,28 @@ async function seed() {
     }
   }
 
+  // Create demo cashier user (Phase 8)
+  const cashierEmail = 'cashier@bujaautospa.bi';
+  const existingCashier = await prisma.user.findUnique({ where: { email: cashierEmail } });
+  if (!existingCashier) {
+    const hashedPassword = await bcrypt.hash('Cashier@123', 12);
+    const cashierRole = await prisma.role.findUnique({ where: { name: 'CASHIER' } });
+    if (cashierRole) {
+      await prisma.user.create({
+        data: {
+          email: cashierEmail,
+          username: 'cashier',
+          passwordHash: hashedPassword,
+          firstName: 'Claudine',
+          lastName: 'Niyongere',
+          status: 'ACTIVE',
+          roles: { create: { roleId: cashierRole.id } },
+        },
+      });
+      console.log(`Created cashier user: ${cashierEmail} (password: Cashier@123)`);
+    }
+  }
+
   // Seed demo customers (Phase 2) - only when table is empty
   const existingCustomers = await prisma.customer.count({ where: { isDeleted: false } });
   if (existingCustomers === 0) {
@@ -466,6 +489,25 @@ async function seed() {
     console.log(`✅ Seeded ${suppliers.length} demo suppliers`);
   } else {
     console.log(`ℹ️ Suppliers already present (${existingSuppliers}), skipping`);
+  }
+
+  // Seed demo receipts (Phase 8) - only when table is empty.
+  // These mirror payments already reflected in seeded sales' paidAmount,
+  // so recording them as rows does not double-count the ledger.
+  const existingPayments = await prisma.payment.count();
+  if (existingPayments === 0) {
+    const inv2 = await prisma.sale.findFirst({ where: { invoiceNo: 'INV-2026-00002' } });
+    if (inv2) {
+      await prisma.payment.createMany({
+        data: [
+          { paymentNo: 'RCPT-2026-00001', saleId: inv2.id, saleInvoiceNo: inv2.invoiceNo, customerName: inv2.customerName, amount: 200000, paymentMethod: 'MOBILE_MONEY', paymentDate: new Date('2026-09-05T09:30:00Z'), reference: 'LUMO-88213', notes: 'Lumitel mobile transfer' },
+          { paymentNo: 'RCPT-2026-00002', saleId: inv2.id, saleInvoiceNo: inv2.invoiceNo, customerName: inv2.customerName, amount: 100000, paymentMethod: 'CASH', paymentDate: new Date('2026-09-07T14:05:00Z'), reference: null, notes: 'Counter cash-in' },
+        ],
+      });
+      console.log('Seeded 2 demo receipts');
+    }
+  } else {
+    console.log(`Receipts already present (${existingPayments}), skipping`);
   }
 
   // Seed demo vehicles (Phase 6) - only when table is empty
