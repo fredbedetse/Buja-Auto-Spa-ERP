@@ -189,7 +189,9 @@ async function start() {
     await prisma.$connect();
     console.log('✅ Database connected');
 
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
       console.log(`✅ Server running on http://localhost:${PORT}`);
       console.log(`📚 API Docs: http://localhost:${PORT}/`);
       console.log(`🏥 Health: http://localhost:${PORT}/api/health`);
