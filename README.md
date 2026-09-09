@@ -100,6 +100,25 @@ This ERP is designed to **continue operating when internet is unavailable** and 
       invoice, cancel → stock restored server-side, detail view, zero console errors) + curl suite for
       409 oversell, immutability & stats endpoints
 
+## ✅ Phase 4.5 Implemented - Internationalization & Dual Currency
+
+- [x] **Language: English / Français** - full app UI localized via a lightweight i18n layer
+      (`lib/i18n.ts` dictionary + `useT()` hook; module-level chips use `tNow()`), covering nav,
+      dashboard, customers, inventory, sales/POS, sync status and login. No i18n library dependency.
+- [x] **Currency: BIF / USD at fixed peg 1 USD = 6,000 BIF** - canonical storage unit stays BIF
+      (prices, totals and stats are stored & computed in BIF server-side); the UI layer converts
+      both ways: all amounts format per the active currency, and money input fields (part prices,
+      credit limit, sale discount/paid) are entered in the active currency and converted on save.
+- [x] Header segmented toggles (`EN|FR`, `BIF|USD`) available in-app and on the login screen;
+      preferences persist via zustand + localStorage (`buja-ui-prefs`) - fully offline-capable,
+      survive reloads and restarts
+- [x] Dates localize with the language (en-GB ↔ fr-FR month names); numbers group per locale
+- [x] QA: dedicated lang/currency suite 21/21 (FR login→nav→headings, USD row formatting, prefs
+      persistence, FR+USD sale of $12.50 stored as exactly 75,000 BIF on the server, revert,
+      cleanup) + full EN regression suites green (20/20, 15/15)
+- Note: server-side validation/error message strings are still English-only; UI toasts render
+      them verbatim
+
 ## 🚀 Quick Start
 
 ### Prerequisites

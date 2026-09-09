@@ -7,7 +7,10 @@ import apiClient from '../lib/api';
 import localDB from '../lib/db';
 import syncEngine from '../lib/syncEngine';
 import { getDeviceId } from '../lib/device';
+import { fmtMoneyBif } from '../lib/money';
 import { useAuthStore } from '../stores/authStore';
+import { useT, tNow } from '../lib/i18n';
+import { useMoney } from '../lib/money';
 import type { Product, ProductCategory, ProductUnit } from '../types';
 
 const CATEGORIES: ProductCategory[] = ['ENGINE', 'BRAKES', 'ELECTRICAL', 'FLUIDS', 'TYRES', 'BODY', 'ACCESSORIES', 'GENERAL'];
@@ -24,7 +27,7 @@ const catColors: Record<string, string> = {
   GENERAL: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
-const fmtBif = (n: number) => `${Math.round(n).toLocaleString('en-US')} BIF`;
+const fmtBif = (n: number, currency: 'bif' | 'usd') => fmtMoneyBif(n, currency);
 
 type FormState = {
   id?: string;
@@ -52,17 +55,18 @@ const emptyForm: FormState = {
 const syncChip = (status?: string) => {
   switch (status) {
     case 'PENDING':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200"><Clock className="w-3 h-3" /> Pending</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200"><Clock className="w-3 h-3" /> {tNow('c.pending')}</span>;
     case 'FAILED':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> Failed</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.failed')}</span>;
     case 'CONFLICT':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> Conflict</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
     default:
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> Synced</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> {tNow('c.synced')}</span>;
   }
 };
 
-export default function InventoryPage() {
+export default function InventoryPage() {  const { t } = useT();
+  const { currency, toDisplay, toBif, curLabel } = useMoney();
   const { hasPermission } = useAuthStore();
   const canManage = hasPermission('inventory:manage');
 
@@ -139,7 +143,7 @@ export default function InventoryPage() {
       id: pr.id, version: pr.version,
       name: pr.name, sku: pr.sku, category: pr.category || 'GENERAL', unit: pr.unit || 'PCS',
       stockQuantity: String(pr.stockQuantity ?? 0), reorderLevel: String(pr.reorderLevel ?? 5),
-      purchasePrice: String(pr.purchasePrice ?? 0), sellingPrice: String(pr.sellingPrice ?? 0),
+      purchasePrice: String(toDisplay(pr.purchasePrice ?? 0)), sellingPrice: String(toDisplay(pr.sellingPrice ?? 0)),
       supplierName: pr.supplierName || '', location: pr.location || '', description: pr.description || '',
       isActive: pr.isActive ?? true,
     });
@@ -165,8 +169,8 @@ export default function InventoryPage() {
     unit: f.unit,
     stockQuantity: Math.max(0, parseInt(f.stockQuantity || '0', 10) || 0),
     reorderLevel: Math.max(0, parseInt(f.reorderLevel || '0', 10) || 0),
-    purchasePrice: Math.max(0, parseFloat(f.purchasePrice || '0') || 0),
-    sellingPrice: Math.max(0, parseFloat(f.sellingPrice || '0') || 0),
+    purchasePrice: Math.max(0, toBif(parseFloat(f.purchasePrice || '0') || 0)),
+    sellingPrice: Math.max(0, toBif(parseFloat(f.sellingPrice || '0') || 0)),
     supplierName: f.supplierName.trim() || null,
     location: f.location.trim() || null,
     description: f.description.trim() || null,
@@ -174,11 +178,11 @@ export default function InventoryPage() {
   });
 
   const validate = (f: FormState) => {
-    if (f.name.trim().length < 2) return 'Product name must be at least 2 characters';
-    if (f.sku.trim().length < 2) return 'SKU is required';
+    if (f.name.trim().length < 2) return t('inv.valName');
+    if (f.sku.trim().length < 2) return t('inv.valSku');
     const buy = parseFloat(f.purchasePrice || '0');
     const sell = parseFloat(f.sellingPrice || '0');
-    if (buy < 0 || sell < 0) return 'Prices cannot be negative';
+    if (buy < 0 || sell < 0) return t('inv.valNeg');
     return '';
   };
 
@@ -217,16 +221,16 @@ export default function InventoryPage() {
         .filter(i => i.entityType === 'Product' && i.status === 'PENDING')
         .toArray();
       await localDB.syncQueue.bulkDelete(queued.map(q => q.id));
-      setNotice('Inventory saved to cloud ✓');
+      setNotice(t('inv.saved'));
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (msg.includes('409') || msg.includes('already exists') || msg.includes('Conflict')) {
-        setNotice('Cloud rejected this change (SKU duplicate or version conflict). It stays queued - resolve it in Sync Status.');
+        setNotice(t('inv.conflict'));
       } else if (msg.includes('OFFLINE') || msg.includes('Network')) {
-        setNotice('Saved offline - will sync when connection returns');
+        setNotice(t('inv.offline'));
       } else {
         setFormError(msg || 'Save failed');
-        setNotice(msg || 'Save failed - kept locally and queued for sync');
+        setNotice(msg || t('inv.failed'));
       }
       await syncEngine.sync().catch(() => undefined);
     } finally {
@@ -237,17 +241,17 @@ export default function InventoryPage() {
   };
 
   const deleteProduct = async (pr: Product) => {
-    if (!window.confirm(`Delete product "${pr.name}" (${pr.sku})? This syncs to all devices.`)) return;
+    if (!window.confirm(t('inv.delConfirm', { name: pr.name, sku: pr.sku }))) return;
     try {
       await apiClient.delete(`/inventory/${pr.id}`);
       await localDB.inventory.delete(pr.id);
-      setNotice('Product deleted ✓');
+      setNotice(t('inv.deleted'));
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (msg.includes('OFFLINE') || msg.includes('Network')) {
         await localDB.inventory.delete(pr.id);
         await queueForSync('DELETE', pr.id, { id: pr.id }, pr.version);
-        setNotice('Deleted offline - sync queued');
+        setNotice(t('inv.delOffline'));
         await syncEngine.sync().catch(() => undefined);
       } else {
         setNotice(msg);
@@ -269,8 +273,8 @@ export default function InventoryPage() {
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory — Truck Parts</h1>
-          <p className="text-gray-500 mt-1">Parts, fluids & consumables with stock levels and reorder alerts</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('inv.heading')}</h1>
+          <p className="text-gray-500 mt-1">{t('inv.sub')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -278,14 +282,14 @@ export default function InventoryPage() {
             source === 'cloud' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
           }`}>
             {source === 'cloud' ? <Cloud className="w-3.5 h-3.5" /> : <CloudOff className="w-3.5 h-3.5" />}
-            {source === 'cloud' ? 'Cloud + local cache' : 'Offline - local data'}
+            {source === 'cloud' ? t('c.cloudCache') : t('c.offlineData')}
           </span>
-          <button onClick={loadProducts} className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors" title="Reload">
+          <button onClick={loadProducts} className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors" title={t('c.reload')}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {canManage && (
             <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C1272D] hover:bg-[#a51f24] text-white text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> Add Product
+              <Plus className="w-4 h-4" /> {t('inv.new')}
             </button>
           )}
         </div>
@@ -294,20 +298,20 @@ export default function InventoryPage() {
       {/* Summary chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-2xl border border-gray-200 px-4 py-3">
-          <div className="flex items-center gap-1.5 text-xs text-gray-400"><Boxes className="w-3.5 h-3.5" /> SKUs</div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400"><Boxes className="w-3.5 h-3.5" /> {t('inv.skus')}</div>
           <div className="text-xl font-bold text-gray-900 mt-0.5">{stats.total}</div>
         </div>
         <div className={`bg-white rounded-2xl border px-4 py-3 ${stats.low > 0 ? 'border-orange-200 bg-orange-50/40' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400"><AlertTriangle className="w-3.5 h-3.5 text-orange-500" /> Low stock</div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400"><AlertTriangle className="w-3.5 h-3.5 text-orange-500" /> {t('inv.low')}</div>
           <div className="text-xl font-bold text-orange-600 mt-0.5">{stats.low}</div>
         </div>
         <div className={`bg-white rounded-2xl border px-4 py-3 ${stats.out > 0 ? 'border-red-200 bg-red-50/40' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400"><Package className="w-3.5 h-3.5 text-red-500" /> Out of stock</div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400"><Package className="w-3.5 h-3.5 text-red-500" /> {t('inv.out')}</div>
           <div className="text-xl font-bold text-red-600 mt-0.5">{stats.out}</div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 px-4 py-3">
-          <div className="text-xs text-gray-400">Stock value (cost)</div>
-          <div className="text-lg font-bold text-gray-900 mt-1">{fmtBif(stats.value)}</div>
+          <div className="text-xs text-gray-400">{t('inv.stockValue')}</div>
+          <div className="text-lg font-bold text-gray-900 mt-1">{fmtBif(stats.value, currency)}</div>
         </div>
       </div>
 
@@ -325,7 +329,7 @@ export default function InventoryPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, SKU, supplier, shelf..."
+            placeholder={t('inv.searchPh')}
             className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white"
           />
         </div>
@@ -334,7 +338,7 @@ export default function InventoryPage() {
             onClick={() => setCategory('')}
             className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${!category ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
           >
-            All
+            {t('inv.all')}
           </button>
           {CATEGORIES.map(cat => (
             <button
@@ -349,7 +353,7 @@ export default function InventoryPage() {
             onClick={() => setOnlyLow(v => !v)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${onlyLow ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
           >
-            Low stock only
+            {t('inv.lowOnly')}
           </button>
         </div>
       </div>
@@ -360,18 +364,18 @@ export default function InventoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400 bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 font-medium">Product</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">Category</th>
-                <th className="px-4 py-3 font-medium text-right">Stock</th>
-                <th className="px-4 py-3 font-medium text-right hidden lg:table-cell">Cost</th>
-                <th className="px-4 py-3 font-medium text-right hidden lg:table-cell">Sell</th>
-                <th className="px-4 py-3 font-medium">Sync</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                <th className="px-4 py-3 font-medium">{t('inv.colProduct')}</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">{t('inv.colCategory')}</th>
+                <th className="px-4 py-3 font-medium text-right">{t('inv.colStock')}</th>
+                <th className="px-4 py-3 font-medium text-right hidden lg:table-cell">{t('inv.colCost')}</th>
+                <th className="px-4 py-3 font-medium text-right hidden lg:table-cell">{t('inv.colSell')}</th>
+                <th className="px-4 py-3 font-medium">{t('c.sync')}</th>
+                <th className="px-4 py-3 font-medium text-right">{t('c.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No products match the current filters.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">{t('inv.empty')}</td></tr>
               )}
               {filtered.map(pr => {
                 const low = pr.stockQuantity <= pr.reorderLevel;
@@ -406,16 +410,16 @@ export default function InventoryPage() {
                       </span>
                       {low && !out && <div className="text-[10px] text-orange-500 mt-0.5">reorder at {pr.reorderLevel}</div>}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600 hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.purchasePrice)}</td>
-                    <td className="px-4 py-3 text-right text-gray-900 font-medium hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.sellingPrice)}</td>
+                    <td className="px-4 py-3 text-right text-gray-600 hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.purchasePrice, currency)}</td>
+                    <td className="px-4 py-3 text-right text-gray-900 font-medium hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.sellingPrice, currency)}</td>
                     <td className="px-4 py-3">{syncChip((pr as any).syncStatus || 'SYNCED')}</td>
                     <td className="px-4 py-3">
                       {canManage ? (
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEdit(pr)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" title="Edit">
+                          <button onClick={() => openEdit(pr)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" title={t('c.edit')}>
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => deleteProduct(pr)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title="Delete">
+                          <button onClick={() => deleteProduct(pr)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title={t('c.delete')}>
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -430,7 +434,7 @@ export default function InventoryPage() {
         <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
           <span>{filtered.length} product{filtered.length === 1 ? '' : 's'} {source === 'local' ? '(local cache)' : ''}</span>
           <button onClick={() => syncEngine.sync()} className="flex items-center gap-1 text-[#C1272D] font-medium hover:underline">
-            <RefreshCw className="w-3 h-3" /> Sync now
+            <RefreshCw className="w-3 h-3" /> {t('c.syncNow')}
           </button>
         </div>
       </div>
@@ -440,63 +444,63 @@ export default function InventoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-gray-900">{form.id ? 'Edit Product' : 'Add Product'}</h2>
+              <h2 className="font-bold text-gray-900">{form.id ? t('inv.editTitle') : t('inv.addTitle')}</h2>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4" /></button>
             </div>
 
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Product name *</label>
-                <input className={inputCls} {...field('name')} placeholder="e.g. Brake Pads Set - Toyota Dyna" />
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.name')}</label>
+                <input className={inputCls} {...field('name')} placeholder={t('inv.namePh')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">SKU *</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.sku')}</label>
                 <input className={inputCls} {...field('sku')} placeholder="BRK-4501" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Category</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.category')}</label>
                 <select className={inputCls} {...field('category')}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Unit</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.unit')}</label>
                 <select className={inputCls} {...field('unit')}>
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Shelf / location</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.shelf')}</label>
                 <input className={inputCls} {...field('location')} placeholder="Shelf A1" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Stock quantity</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.qty')}</label>
                 <input className={inputCls} type="number" min="0" {...field('stockQuantity')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Reorder level</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.reorder')}</label>
                 <input className={inputCls} type="number" min="0" {...field('reorderLevel')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Purchase price (BIF)</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.purchase', { cur: curLabel })}</label>
                 <input className={inputCls} type="number" min="0" step="100" {...field('purchasePrice')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Selling price (BIF)</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.sellPrice', { cur: curLabel })}</label>
                 <input className={inputCls} type="number" min="0" step="100" {...field('sellingPrice')} />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Supplier</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.supplier')}</label>
                 <input className={inputCls} {...field('supplierName')} />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Description</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('inv.description')}</label>
                 <textarea className={inputCls} rows={2} {...field('description')} />
               </div>
               <div className="flex items-center">
                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 accent-[#C1272D]" {...field('isActive')} />
-                  Active item
+                  {t('inv.activeLabel')}
                 </label>
               </div>
 
@@ -506,9 +510,9 @@ export default function InventoryPage() {
             </div>
 
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 sticky bottom-0 bg-white">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50">{t('c.cancel')}</button>
               <button onClick={saveProduct} disabled={saving} className="px-5 py-2 rounded-xl bg-[#C1272D] hover:bg-[#a51f24] disabled:opacity-60 text-white text-sm font-medium">
-                {saving ? 'Saving...' : form.id ? 'Save changes' : 'Create product'}
+                {saving ? t('c.saving') : form.id ? t('c.saveChanges') : t('inv.create')}
               </button>
             </div>
           </div>

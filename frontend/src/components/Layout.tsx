@@ -28,27 +28,29 @@ import {
   UserCog
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useT } from '../lib/i18n';
+import UiToggles from './UiToggles';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard:read', exact: true },
-  { name: 'Customers', href: '/customers', icon: Users, module: 'customers:read' },
-  { name: 'Suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read', badge: 'Soon' },
-  { name: 'Vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read', badge: 'Soon' },
-  { name: 'Employees', href: '/employees', icon: UserCog, module: 'users:read', badge: 'Soon' },
-  { name: 'Truck Parts', href: '/inventory', icon: Package, module: 'inventory:read' },
-  { name: 'Purchases', href: '/purchases', icon: ShoppingCart, module: 'purchases:read', badge: 'Soon' },
-  { name: 'Sales', href: '/sales', icon: ShoppingCart, module: 'sales:read' },
-  { name: 'Invoices', href: '/invoices', icon: FileText, module: 'invoices:read', badge: 'Soon' },
-  { name: 'Payments', href: '/payments', icon: CreditCard, module: 'payments:read', badge: 'Soon' },
-  { name: 'Car Wash', href: '/carwash', icon: Droplets, module: 'carwash:read', badge: 'Soon' },
-  { name: 'Maintenance', href: '/maintenance', icon: Wrench, module: 'maintenance:read', badge: 'Soon' },
-  { name: 'EV Rentals', href: '/ev-rentals', icon: Zap, module: 'evrentals:read', badge: 'Soon' },
-  { name: 'Truck Rentals', href: '/truck-rentals', icon: Truck, module: 'truckrentals:read', badge: 'Soon' },
-  { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reports:read', badge: 'Soon' },
-  { name: 'Users & Roles', href: '/users', icon: Shield, module: 'users:read' },
-  { name: 'Settings', href: '/settings', icon: Settings, module: 'settings:read', badge: 'Soon' },
+  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard:read', exact: true },
+  { key: 'nav.customers', href: '/customers', icon: Users, module: 'customers:read' },
+  { key: 'nav.suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read', soon: true },
+  { key: 'nav.vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read', soon: true },
+  { key: 'nav.employees', href: '/employees', icon: UserCog, module: 'users:read', soon: true },
+  { key: 'nav.truckParts', href: '/inventory', icon: Package, module: 'inventory:read' },
+  { key: 'nav.purchases', href: '/purchases', icon: ShoppingCart, module: 'purchases:read', soon: true },
+  { key: 'nav.sales', href: '/sales', icon: ShoppingCart, module: 'sales:read' },
+  { key: 'nav.invoices', href: '/invoices', icon: FileText, module: 'invoices:read', soon: true },
+  { key: 'nav.payments', href: '/payments', icon: CreditCard, module: 'payments:read', soon: true },
+  { key: 'nav.carwash', href: '/carwash', icon: Droplets, module: 'carwash:read', soon: true },
+  { key: 'nav.maintenance', href: '/maintenance', icon: Wrench, module: 'maintenance:read', soon: true },
+  { key: 'nav.evRentals', href: '/ev-rentals', icon: Zap, module: 'evrentals:read', soon: true },
+  { key: 'nav.truckRentals', href: '/truck-rentals', icon: Truck, module: 'truckrentals:read', soon: true },
+  { key: 'nav.reports', href: '/reports', icon: BarChart3, module: 'reports:read', soon: true },
+  { key: 'nav.usersRoles', href: '/users', icon: Shield, module: 'users:read' },
+  { key: 'nav.settings', href: '/settings', icon: Settings, module: 'settings:read', soon: true },
 ];
 
 export default function Layout() {
@@ -58,7 +60,8 @@ export default function Layout() {
   const syncStatus = useSyncStatus();
   const navigate = useNavigate();
   const location = useLocation();
-  const crumb = navigation.find(n => n.href === location.pathname)?.name || (location.pathname === '/dashboard' ? 'Dashboard' : 'Dashboard');
+  const { t, language } = useT();
+  const crumbKey = navigation.find(n => n.href === location.pathname)?.key || 'nav.dashboard';
 
   const filteredNav = navigation.filter(item => {
     if (item.module === 'dashboard:read') return true;
@@ -79,13 +82,13 @@ export default function Layout() {
     return 'bg-green-500';
   };
 
-  const getSyncStatusText = () => {
-    if (!onlineStatus.isOnline) return 'Offline';
-    if (syncStatus.status === 'syncing') return 'Syncing...';
-    if (syncStatus.conflicts > 0) return `${syncStatus.conflicts} conflicts`;
-    if (syncStatus.failed > 0) return `${syncStatus.failed} failed`;
-    if (syncStatus.pending > 0) return `${syncStatus.pending} pending`;
-    return 'Synced';
+  const getSyncStatusText = () => { /* localized below */
+    if (!onlineStatus.isOnline) return t('layout.offlineMode').replace(' Mode','').replace('Mode ','');
+    if (syncStatus.status === 'syncing') return t('layout.syncing');
+    if (syncStatus.conflicts > 0) return t('dash.conflictsCap') + ' ' + syncStatus.conflicts;
+    if (syncStatus.failed > 0) return t('dash.failedCap') + ' ' + syncStatus.failed;
+    if (syncStatus.pending > 0) return t('c.pending') + ' ' + syncStatus.pending;
+    return t('c.synced');
   };
 
   return (
@@ -122,9 +125,9 @@ export default function Layout() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-xs">
               {onlineStatus.isOnline ? (
-                <><Wifi className="w-4 h-4 text-green-400" /> <span className="text-green-400">Online</span></>
+                <><Wifi className="w-4 h-4 text-green-400" /> <span className="text-green-400">{t('layout.online')}</span></>
               ) : (
-                <><WifiOff className="w-4 h-4 text-gray-400" /> <span className="text-gray-400">Offline Mode</span></>
+                <><WifiOff className="w-4 h-4 text-gray-400" /> <span className="text-gray-400">{t('layout.offlineMode')}</span></>
               )}
             </div>
             <div className="flex items-center gap-1.5">
@@ -134,7 +137,7 @@ export default function Layout() {
           </div>
           
           <div className="flex items-center justify-between text-[11px] text-white/50">
-            <span>Last sync: {syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleTimeString() : 'Never'}</span>
+            <span>{t('layout.lastSync')} {syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleTimeString(language === 'fr' ? 'fr-FR' : 'en-GB') : t('layout.never')}</span>
             <button 
               onClick={() => syncStatus.triggerSync()}
               disabled={syncStatus.status === 'syncing' || !onlineStatus.isOnline}
@@ -146,9 +149,9 @@ export default function Layout() {
 
           {(syncStatus.pending > 0 || syncStatus.failed > 0 || syncStatus.conflicts > 0) && (
             <div className="mt-2 pt-2 border-t border-white/10 flex gap-2 text-[10px]">
-              {syncStatus.pending > 0 && <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">{syncStatus.pending} pending</span>}
-              {syncStatus.failed > 0 && <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">{syncStatus.failed} failed</span>}
-              {syncStatus.conflicts > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300">{syncStatus.conflicts} conflicts</span>}
+              {syncStatus.pending > 0 && <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">{syncStatus.pending} {t('c.pending').toLowerCase()}</span>}
+              {syncStatus.failed > 0 && <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">{syncStatus.failed} {t('c.failed').toLowerCase()}</span>}
+              {syncStatus.conflicts > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300">{syncStatus.conflicts} {t('dash.conflictsCap').toLowerCase()}</span>}
             </div>
           )}
         </div>
@@ -157,7 +160,7 @@ export default function Layout() {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin">
           {filteredNav.map((item) => (
             <NavLink
-              key={item.name}
+              key={item.href}
               to={item.href}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
@@ -169,9 +172,9 @@ export default function Layout() {
               }
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span className="flex-1">{item.name}</span>
-              {item.badge && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">{item.badge}</span>
+              <span className="flex-1">{t(item.key)}</span>
+              {item.soon && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">{t('c.soon')}</span>
               )}
             </NavLink>
           ))}
@@ -190,7 +193,7 @@ export default function Layout() {
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-              title="Logout"
+              title={t('layout.logout')}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -217,7 +220,7 @@ export default function Layout() {
             <div className="hidden lg:flex items-center gap-2 text-sm text-gray-500">
               <span>Buja Auto Spa ERP</span>
               <span>/</span>
-              <span className="text-gray-900 font-medium">{crumb}</span>
+              <span className="text-gray-900 font-medium">{t(crumbKey)}</span>
             </div>
 
             {/* Global Search - placeholder */}
@@ -225,7 +228,7 @@ export default function Layout() {
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  placeholder="Search customers, parts, invoices... (soon)"
+                  placeholder={t('layout.searchSoon')}
                   className="pl-9 pr-4 py-2 w-80 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] focus:bg-white transition-all"
                   disabled
                 />
@@ -240,6 +243,8 @@ export default function Layout() {
               <span>{getSyncStatusText()}</span>
             </div>
 
+            <UiToggles />
+
             <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors">
               <Bell className="w-5 h-5 text-gray-600" />
               {syncStatus.conflicts > 0 && (
@@ -250,7 +255,7 @@ export default function Layout() {
             <div className="hidden sm:flex items-center gap-2 pl-2 ml-2 border-l border-gray-200">
               <div className="text-right">
                 <div className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</div>
-                <div className="text-xs text-gray-500">{onlineStatus.isServerReachable ? 'Cloud connected' : 'Local mode'}</div>
+                <div className="text-xs text-gray-500">{onlineStatus.isServerReachable ? t('layout.cloudConnected') : t('layout.localMode')}</div>
               </div>
             </div>
           </div>
@@ -265,10 +270,10 @@ export default function Layout() {
         {!onlineStatus.isOnline && (
           <div className="bg-[#1A1A2E] text-white px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
             <WifiOff className="w-4 h-4" />
-            <span>You are offline - ERP continues to work. Changes will sync when online.</span>
+            <span>{t('layout.offlineBanner')}</span>
             <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-white/10 text-xs">
               <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-              {syncStatus.pending} pending
+              {syncStatus.pending} {t('c.pending').toLowerCase()}
             </span>
           </div>
         )}
@@ -277,12 +282,12 @@ export default function Layout() {
         {syncStatus.conflicts > 0 && onlineStatus.isOnline && (
           <div className="bg-amber-500 text-white px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
             <AlertTriangle className="w-4 h-4" />
-            <span>{syncStatus.conflicts} sync conflicts need resolution</span>
+            <span>{t('layout.conflictBanner', { n: syncStatus.conflicts })}</span>
             <button 
               onClick={() => window.location.href = '/sync-status'}
               className="ml-2 px-3 py-1 rounded-full bg-white text-amber-600 text-xs font-medium hover:bg-amber-50"
             >
-              Resolve
+              {t('layout.resolve')}
             </button>
           </div>
         )}

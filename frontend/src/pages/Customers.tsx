@@ -8,6 +8,8 @@ import localDB from '../lib/db';
 import syncEngine from '../lib/syncEngine';
 import { getDeviceId } from '../lib/device';
 import { useAuthStore } from '../stores/authStore';
+import { useT, tNow } from '../lib/i18n';
+import { useMoney } from '../lib/money';
 import type { Customer } from '../types';
 
 type FormState = {
@@ -35,17 +37,18 @@ const emptyForm: FormState = {
 const syncChip = (status?: string) => {
   switch (status) {
     case 'PENDING':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200"><Clock className="w-3 h-3" /> Pending sync</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200"><Clock className="w-3 h-3" /> {tNow('c.pendingSync')}</span>;
     case 'FAILED':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> Sync failed</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.syncFailed')}</span>;
     case 'CONFLICT':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> Conflict</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
     default:
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> Synced</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> {tNow('c.synced')}</span>;
   }
 };
 
-export default function CustomersPage() {
+export default function CustomersPage() {  const { t } = useT();
+  const { toDisplay, toBif, curLabel } = useMoney();
   const { hasPermission } = useAuthStore();
   const canCreate = hasPermission('customers:create') || hasPermission('customers:manage');
   const canUpdate = hasPermission('customers:update') || hasPermission('customers:manage');
@@ -115,7 +118,7 @@ export default function CustomersPage() {
       name: c.name || '', contactName: c.contactName || '', phone: c.phone || '',
       altPhone: c.altPhone || '', email: c.email || '', customerType: c.customerType || 'INDIVIDUAL',
       address: c.address || '', city: c.city || '', notes: c.notes || '',
-      creditLimit: String(c.creditLimit ?? 0), isActive: c.isActive ?? true,
+      creditLimit: String(toDisplay(c.creditLimit ?? 0)), isActive: c.isActive ?? true,
     });
     setFormError('');
     setShowForm(true);
@@ -142,14 +145,14 @@ export default function CustomersPage() {
     address: f.address.trim() || null,
     city: f.city.trim() || null,
     notes: f.notes.trim() || null,
-    creditLimit: parseFloat(f.creditLimit || '0') || 0,
+    creditLimit: toBif(parseFloat(f.creditLimit || '0') || 0),
     isActive: f.isActive,
   });
 
   const validate = (f: FormState) => {
-    if (f.name.trim().length < 2) return 'Customer name must be at least 2 characters';
-    if (f.phone.trim().length < 6) return 'A valid phone number is required';
-    if (f.email.trim() && !/^\S+@\S+\.\S+$/.test(f.email.trim())) return 'Email format is invalid';
+    if (f.name.trim().length < 2) return t('cust.valName');
+    if (f.phone.trim().length < 6) return t('cust.valPhone');
+    if (f.email.trim() && !/^\S+@\S+\.\S+$/.test(f.email.trim())) return t('cust.valEmail');
     return '';
   };
 
@@ -189,16 +192,16 @@ export default function CustomersPage() {
         .filter(i => i.entityType === 'Customer' && i.status === 'PENDING')
         .toArray();
       await localDB.syncQueue.bulkDelete(queued.map(q => q.id));
-      setNotice('Customer saved to cloud ✓');
+      setNotice(t('cust.saved'));
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (msg.includes('409') || msg.includes('already exists') || msg.includes('Conflict')) {
-        setNotice(`Cloud rejected this change (conflict or duplicate phone). It stays queued - resolve it in Sync Status.`);
+        setNotice(t('cust.conflict'));
       } else if (msg.includes('OFFLINE') || msg.includes('Network')) {
-        setNotice('Saved offline - will sync when connection returns');
+        setNotice(t('cust.offline'));
       } else {
         setFormError(msg || 'Save failed');
-        setNotice(msg || 'Save failed - kept locally and queued for sync');
+        setNotice(msg || t('cust.failed'));
       }
       await syncEngine.sync().catch(() => undefined);
     } finally {
@@ -209,18 +212,18 @@ export default function CustomersPage() {
   };
 
   const deleteCustomer = async (c: Customer) => {
-    if (!window.confirm(`Delete customer "${c.name}"? This syncs to all devices.`)) return;
+    if (!window.confirm(t('cust.delConfirm', { name: c.name }))) return;
     try {
       await apiClient.delete(`/customers/${c.id}`);
       await localDB.customers.delete(c.id);
-      setNotice('Customer deleted ✓');
+      setNotice(t('cust.deleted'));
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (msg.includes('OFFLINE') || msg.includes('Network')) {
         // Remove locally + queue the delete for later sync
         await localDB.customers.delete(c.id);
         await queueForSync('DELETE', c.id, { id: c.id }, c.version);
-        setNotice('Deleted offline - sync queued');
+        setNotice(t('cust.delOffline'));
         await syncEngine.sync().catch(() => undefined);
       } else {
         setNotice(msg);
@@ -242,8 +245,8 @@ export default function CustomersPage() {
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-500 mt-1">Client management for parts, car wash, maintenance and rentals</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('cust.heading')}</h1>
+          <p className="text-gray-500 mt-1">{t('cust.sub')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -251,14 +254,14 @@ export default function CustomersPage() {
             source === 'cloud' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
           }`}>
             {source === 'cloud' ? <Cloud className="w-3.5 h-3.5" /> : <CloudOff className="w-3.5 h-3.5" />}
-            {source === 'cloud' ? 'Cloud + local cache' : 'Offline - local data'}
+            {source === 'cloud' ? t('c.cloudCache') : t('c.offlineData')}
           </span>
-          <button onClick={loadCustomers} className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors" title="Reload">
+          <button onClick={loadCustomers} className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors" title={t('c.reload')}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {canCreate && (
             <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C1272D] hover:bg-[#a51f24] text-white text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> Add Customer
+              <Plus className="w-4 h-4" /> {t('cust.new')}
             </button>
           )}
         </div>
@@ -276,7 +279,7 @@ export default function CustomersPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, phone, email, city..."
+          placeholder={t('cust.searchPh')}
           className="w-full sm:max-w-md pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white"
         />
       </div>
@@ -286,17 +289,17 @@ export default function CustomersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400 bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Contact</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">Location</th>
-                <th className="px-4 py-3 font-medium hidden lg:table-cell">Type</th>
-                <th className="px-4 py-3 font-medium">Sync</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                <th className="px-4 py-3 font-medium">{t('cust.colCustomer')}</th>
+                <th className="px-4 py-3 font-medium">{t('cust.colContact')}</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">{t('cust.colLocation')}</th>
+                <th className="px-4 py-3 font-medium hidden lg:table-cell">{t('cust.colType')}</th>
+                <th className="px-4 py-3 font-medium">{t('c.sync')}</th>
+                <th className="px-4 py-3 font-medium text-right">{t('c.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400">No customers yet. {canCreate ? 'Add the first one.' : ''}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400">{t('cust.emptyA')}{canCreate ? t('cust.emptyB') : ''}</td></tr>
               )}
               {filtered.map(c => (
                 <tr key={c.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
@@ -318,19 +321,19 @@ export default function CustomersPage() {
                   <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{c.city || '—'}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${c.customerType === 'COMPANY' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}>
-                      {c.customerType === 'COMPANY' ? 'Company' : 'Individual'}
+                      {c.customerType === 'COMPANY' ? t('cust.company') : t('cust.individual')}
                     </span>
                   </td>
                   <td className="px-4 py-3">{syncChip((c as any).syncStatus || 'SYNCED')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && (
-                        <button onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" title="Edit">
+                        <button onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" title={t('c.edit')}>
                           <Edit className="w-4 h-4" />
                         </button>
                       )}
                       {canDelete && (
-                        <button onClick={() => deleteCustomer(c)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title="Delete">
+                        <button onClick={() => deleteCustomer(c)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title={t('c.delete')}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -344,7 +347,7 @@ export default function CustomersPage() {
         <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
           <span>{filtered.length} customer{filtered.length === 1 ? '' : 's'} {source === 'local' ? '(local cache)' : ''}</span>
           <button onClick={() => syncEngine.sync()} className="flex items-center gap-1 text-[#C1272D] font-medium hover:underline">
-            <RefreshCw className="w-3 h-3" /> Sync now
+            <RefreshCw className="w-3 h-3" /> {t('c.syncNow')}
           </button>
         </div>
       </div>
@@ -353,59 +356,59 @@ export default function CustomersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-gray-900">{form.id ? 'Edit Customer' : 'Add Customer'}</h2>
+              <h2 className="font-bold text-gray-900">{form.id ? t('cust.editTitle') : t('cust.addTitle')}</h2>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4" /></button>
             </div>
 
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Customer name *</label>
-                <input className={inputCls} {...field('name')} placeholder="e.g. Ngabo Transports SARL" />
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.name')}</label>
+                <input className={inputCls} {...field('name')} placeholder={t('cust.namePh')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Type</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.type')}</label>
                 <select className={inputCls} {...field('customerType')}>
-                  <option value="INDIVIDUAL">Individual</option>
-                  <option value="COMPANY">Company</option>
+                  <option value="INDIVIDUAL">{t('cust.individual')}</option>
+                  <option value="COMPANY">{t('cust.company')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Contact person</label>
-                <input className={inputCls} {...field('contactName')} placeholder="Owner / manager name" />
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.contact')}</label>
+                <input className={inputCls} {...field('contactName')} placeholder={t('cust.contactPh')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Phone *</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.phone')}</label>
                 <input className={inputCls} {...field('phone')} placeholder="+257 7X XXX XXX" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Alt phone</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.altPhone')}</label>
                 <input className={inputCls} {...field('altPhone')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Email</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.email')}</label>
                 <input className={inputCls} type="email" {...field('email')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">City</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.city')}</label>
                 <input className={inputCls} {...field('city')} placeholder="Gitega, Bujumbura, ..." />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Address</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.address')}</label>
                 <input className={inputCls} {...field('address')} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Credit limit (BIF)</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.credit', { cur: curLabel })}</label>
                 <input className={inputCls} type="number" min="0" step="1000" {...field('creditLimit')} />
               </div>
               <div className="flex items-center mt-6">
                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 accent-[#C1272D]" {...field('isActive')} />
-                  Active customer
+                  {t('cust.activeLabel')}
                 </label>
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-gray-500 block mb-1">Notes</label>
-                <textarea className={inputCls} rows={3} {...field('notes')} placeholder="Vehicles, contracts, preferences..." />
+                <label className="text-xs font-medium text-gray-500 block mb-1">{t('c.notes')}</label>
+                <textarea className={inputCls} rows={3} {...field('notes')} placeholder={t('cust.notesPh')} />
               </div>
 
               {formError && (
@@ -414,9 +417,9 @@ export default function CustomersPage() {
             </div>
 
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 sticky bottom-0 bg-white">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50">{t('c.cancel')}</button>
               <button onClick={saveCustomer} disabled={saving} className="px-5 py-2 rounded-xl bg-[#C1272D] hover:bg-[#a51f24] disabled:opacity-60 text-white text-sm font-medium">
-                {saving ? 'Saving...' : form.id ? 'Save changes' : 'Create customer'}
+                {saving ? t('c.saving') : form.id ? t('c.saveChanges') : t('cust.create')}
               </button>
             </div>
           </div>

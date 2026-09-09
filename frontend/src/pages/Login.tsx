@@ -1,9 +1,13 @@
 import { useState } from 'react';
+import { useT } from '../lib/i18n';
+import UiToggles from '../components/UiToggles';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { Eye, EyeOff, Truck, Wrench, Zap, Droplets, Shield, Wifi, Database, RefreshCw } from 'lucide-react';
 
 export default function Login() {
+  const { t } = useT();
+
   const [identifier, setIdentifier] = useState('admin@bujaautospa.bi');
   const [password, setPassword] = useState('Admin@123456');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +30,7 @@ export default function Login() {
       await login(identifier, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || t('login.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +60,7 @@ export default function Login() {
 
             <h1 className="text-4xl font-bold leading-tight mb-4">
               Offline-First ERP<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B00] to-[#C1272D]">Built for Gitega</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B00] to-[#C1272D]">{t('login.builtFor')}</span>
             </h1>
             <p className="text-white/60 text-lg leading-relaxed max-w-lg">
               Complete business management for truck parts, maintenance, EV & truck rentals, and car wash. Works offline, syncs when online.
@@ -108,8 +112,9 @@ export default function Login() {
 
           <div className="bg-white rounded-[24px] shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-              <p className="text-gray-500 mt-1">Sign in to your ERP workspace</p>
+              <div className="flex justify-end mb-3"><UiToggles /></div>
+              <h2 className="text-2xl font-bold text-gray-900">{t('login.welcome')}</h2>
+              <p className="text-gray-500 mt-1">{t('login.sub')}</p>
             </div>
 
             {error && (
@@ -120,7 +125,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email or Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('login.id')}</label>
                 <input
                   type="text"
                   value={identifier}
@@ -132,7 +137,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('login.password')}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -160,16 +165,16 @@ export default function Login() {
                 {isLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
+                    {t('login.signing')}
                   </>
                 ) : (
-                  'Sign In to ERP'
+                  t('login.signIn')
                 )}
               </button>
             </form>
 
             <div className="mt-8 p-4 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="text-xs font-medium text-gray-700 mb-2">Demo Accounts (Foundation)</div>
+              <div className="text-xs font-medium text-gray-700 mb-2">{t('login.demo')}</div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Super Admin:</span>
@@ -184,7 +189,7 @@ export default function Login() {
 
             <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-400">
               <Database className="w-3 h-3" />
-              <span>Offline-capable • IndexedDB • Auto-sync</span>
+              <span>{t('login.tagline')}</span>
             </div>
           </div>
 

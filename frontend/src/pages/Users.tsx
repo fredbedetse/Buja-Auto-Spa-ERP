@@ -3,9 +3,11 @@ import { Search, Plus, Edit, Trash2, Shield, AlertTriangle, CheckCircle, Clock, 
 import apiClient from '../lib/api';
 import localDB from '../lib/db';
 import { useAuthStore } from '../stores/authStore';
+import { useT } from '../lib/i18n';
 import type { User } from '../types';
 
 export default function UsersPage() {
+  const { t } = useT();
   const [users, setUsers] = useState<User[]>([]);
   const [localUsers, setLocalUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,8 +61,8 @@ export default function UsersPage() {
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users & Permissions</h1>
-          <p className="text-gray-500 mt-1">Manage ERP users, roles, and access control</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('users.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('users.sub')}</p>
         </div>
         
         <div className="flex items-center gap-2">
@@ -98,7 +100,7 @@ export default function UsersPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users..."
+              placeholder={t('users.searchPh')}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] text-sm"
             />
           </div>
@@ -118,12 +120,12 @@ export default function UsersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-3">User</th>
-                <th className="px-6 py-3">Roles</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Version</th>
-                <th className="px-6 py-3">Sync</th>
-                <th className="px-6 py-3">Actions</th>
+                <th className="px-6 py-3">{t('users.colUser')}</th>
+                <th className="px-6 py-3">{t('users.colRoles')}</th>
+                <th className="px-6 py-3">{t('users.colStatus')}</th>
+                <th className="px-6 py-3">{t('users.colVersion')}</th>
+                <th className="px-6 py-3">{t('c.sync')}</th>
+                <th className="px-6 py-3">{t('c.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -132,7 +134,7 @@ export default function UsersPage() {
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-6 h-6 border-2 border-gray-200 border-t-[#FF6B00] rounded-full animate-spin" />
-                      <span className="text-sm text-gray-500">Loading users...</span>
+                      <span className="text-sm text-gray-500">{t('users.loading')}</span>
                     </div>
                   </td>
                 </tr>

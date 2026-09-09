@@ -11,6 +11,8 @@ import { useSyncStatus } from '../hooks/useSyncStatus';
 import localDB from '../lib/db';
 import apiClient from '../lib/api';
 import { Link } from 'react-router-dom';
+import { useT } from '../lib/i18n';
+import { useMoney } from '../lib/money';
 
 interface SystemStats {
   users: number;
@@ -27,6 +29,9 @@ interface SystemStats {
 }
 
 export default function Dashboard() {
+  const { t } = useT();
+  const { fmt: fmtBif } = useMoney();
+
   const { user } = useAuthStore();
   const onlineStatus = useOnlineStatus();
   const syncStatus = useSyncStatus();
@@ -123,13 +128,13 @@ export default function Dashboard() {
   }, [syncStatus.pending, syncStatus.failed]);
 
   const modules: Array<{ name: string; icon: any; color: string; count: string; sub?: string; desc: string; href: string; implemented?: boolean }> = [
-    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management', href: '/customers', implemented: true },
-{ name: 'Truck Parts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? `${stats.lowStock} low stock` : undefined, desc: 'Inventory & Sales', href: '/inventory', implemented: true },
-    { name: 'Sales / POS', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? `${Math.round(stats.balanceOut).toLocaleString('en-US')} BIF outstanding` : undefined, desc: 'Invoiced sales & receipts', href: '/sales', implemented: true },
-    { name: 'Maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'Vehicle Service', href: '/maintenance' },
-    { name: 'Car Wash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'Wash Services', href: '/carwash' },
-    { name: 'EV Rentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'Electric Fleet', href: '/ev-rentals' },
-    { name: 'Truck Rentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'Heavy Rentals', href: '/truck-rentals' },
+    { name: 'nav.customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'dash.customersDesc', href: '/customers', implemented: true },
+{ name: 'nav.truckParts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? t('dash.lowStock', { n: stats.lowStock }) : undefined, desc: 'dash.partsDesc', href: '/inventory', implemented: true },
+    { name: 'dash.salesName', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? t('dash.outstanding', { money: fmtBif(stats.balanceOut) }) : undefined, desc: 'dash.salesDesc', href: '/sales', implemented: true },
+    { name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
+    { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'dash.washDesc', href: '/carwash' },
+    { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
+    { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'dash.truckDesc', href: '/truck-rentals' },
 ];
 
   return (
@@ -138,7 +143,7 @@ export default function Dashboard() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Welcome, {user?.firstName} 👋
+            {t('dash.hello', { name: user?.firstName || '' })}
           </h1>
           <p className="text-gray-500 mt-1">
             Buja Auto Spa ERP • Offline-First Foundation • Gitega, Burundi
@@ -157,8 +162,8 @@ export default function Dashboard() {
               onlineStatus.isOnline && onlineStatus.isServerReachable ? 'bg-green-500 animate-pulse' : 
               onlineStatus.isOnline ? 'bg-yellow-500' : 'bg-gray-400'
             }`} />
-            {onlineStatus.isOnline && onlineStatus.isServerReachable ? 'Cloud Connected' : 
-             onlineStatus.isOnline ? 'Local Mode (Server Unreachable)' : 'Offline Mode'}
+            {onlineStatus.isOnline && onlineStatus.isServerReachable ? t('dash.cloudConn') : 
+             onlineStatus.isOnline ? t('dash.localModeServer') : t('layout.offlineMode')}
           </div>
           
           <button
@@ -167,7 +172,7 @@ export default function Dashboard() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1A1A2E] text-white text-xs font-medium hover:bg-black disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`} />
-            Sync Now
+            {t('dash.syncNow')}
           </button>
         </div>
       </div>
@@ -182,19 +187,19 @@ export default function Dashboard() {
                 <Shield className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold">Foundation Architecture • Ready</h3>
-                <p className="text-xs text-white/60">Offline-first ERP shell implemented</p>
+                <h3 className="font-bold">{t('dash.foundTitle')}</h3>
+                <p className="text-xs text-white/60">{t('dash.foundSub')}</p>
               </div>
             </div>
             
             <div className="grid grid-cols-3 gap-4 mt-6">
               {[
-                { label: 'Auth & RBAC', status: 'Active', icon: Shield },
-                { label: 'Local DB', status: 'IndexedDB', icon: HardDrive },
-                { label: 'Sync Engine', status: `${stats.pendingSync} pending`, icon: RefreshCw },
-                { label: 'PWA', status: 'Installed', icon: Smartphone },
-                { label: 'Cloud DB', status: stats.isServerConnected ? 'Connected' : 'Offline', icon: Cloud },
-                { label: 'Online Detect', status: onlineStatus.isOnline ? 'Online' : 'Offline', icon: Wifi },
+                { label: t('dash.authRbac'), status: t('dash.active'), icon: Shield },
+                { label: t('dash.localDb'), status: t('c.indexed'), icon: HardDrive },
+                { label: t('dash.syncEngine'), status: t('dash.pendingN', { n: stats.pendingSync }), icon: RefreshCw },
+                { label: 'PWA', status: t('dash.installed'), icon: Smartphone },
+                { label: t('dash.cloudDb'), status: stats.isServerConnected ? t('dash.connected') : t('c.offline'), icon: Cloud },
+                { label: t('dash.onlineDetect'), status: onlineStatus.isOnline ? t('c.online') : t('c.offline'), icon: Wifi },
               ].map((item) => (
                 <div key={item.label} className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <item.icon className="w-4 h-4 mb-1.5 text-white/60" />
@@ -216,25 +221,25 @@ export default function Dashboard() {
             <div className="flex justify-between items-center p-3 rounded-xl bg-gray-50">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-600">Last Sync</span>
+                <span className="text-sm text-gray-600">{t('dash.lastSyncCap')}</span>
               </div>
               <span className="text-sm font-medium">
-                {syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleTimeString() : 'Never'}
+                {syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleTimeString() : t('c.never')}
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center p-3 rounded-xl bg-yellow-50 border border-yellow-200">
                 <div className="text-lg font-bold text-yellow-700">{stats.pendingSync}</div>
-                <div className="text-xs text-yellow-600">Pending</div>
+                <div className="text-xs text-yellow-600">{t('c.pending')}</div>
               </div>
               <div className="text-center p-3 rounded-xl bg-red-50 border border-red-200">
                 <div className="text-lg font-bold text-red-700">{stats.failedSync}</div>
-                <div className="text-xs text-red-600">Failed</div>
+                <div className="text-xs text-red-600">{t('dash.failedCap')}</div>
               </div>
               <div className="text-center p-3 rounded-xl bg-orange-50 border border-orange-200">
                 <div className="text-lg font-bold text-orange-700">{stats.conflicts}</div>
-                <div className="text-xs text-orange-600">Conflicts</div>
+                <div className="text-xs text-orange-600">{t('dash.conflictsCap')}</div>
               </div>
             </div>
 
@@ -249,13 +254,13 @@ export default function Dashboard() {
                 onClick={() => syncStatus.retryFailed()}
                 className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Retry Failed
+                {t('dash.retryFailed')}
               </button>
             </div>
 
             {syncStatus.lastResult && (
               <div className="text-xs text-gray-500 p-2 rounded-lg bg-gray-50">
-                Last: {syncStatus.lastResult.pushed} pushed, {syncStatus.lastResult.pulled} pulled
+                {t('dash.lastRes', { p: syncStatus.lastResult.pushed, y: syncStatus.lastResult.pulled })}
                 {syncStatus.lastResult.errors.length > 0 && (
                   <div className="text-red-600 mt-1">{syncStatus.lastResult.errors[0]}</div>
                 )}
@@ -268,10 +273,10 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Cloud Users', value: stats.users, icon: Users, change: 'Synced', color: 'bg-blue-500' },
-          { label: 'Local Cache', value: stats.localUsers, icon: Database, change: 'IndexedDB', color: 'bg-purple-500' },
-          { label: 'Sync Queue', value: stats.pendingSync + stats.failedSync, icon: RefreshCw, change: stats.pendingSync > 0 ? 'Pending' : 'Clear', color: 'bg-orange-500' },
-          { label: 'System Health', value: stats.isServerConnected ? '100%' : 'Offline', icon: CheckCircle, change: stats.isServerConnected ? 'Healthy' : 'Local Only', color: stats.isServerConnected ? 'bg-green-500' : 'bg-gray-400' },
+          { label: t('dash.cloudUsers'), value: stats.users, icon: Users, change: t('c.synced'), good: true, color: 'bg-blue-500' },
+          { label: t('dash.localCache'), value: stats.localUsers, icon: Database, change: t('c.indexed'), good: false, color: 'bg-purple-500' },
+          { label: t('dash.syncQueue'), value: stats.pendingSync + stats.failedSync, icon: RefreshCw, change: stats.pendingSync > 0 ? t('c.pending') : t('sync.clearQueue'), good: stats.pendingSync === 0, color: 'bg-orange-500' },
+          { label: t('dash.sysHealth'), value: stats.isServerConnected ? '100%' : t('c.offline'), icon: CheckCircle, change: stats.isServerConnected ? t('dash.healthy') : t('dash.localOnly'), good: stats.isServerConnected, color: stats.isServerConnected ? 'bg-green-500' : 'bg-gray-400' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3">
@@ -279,7 +284,7 @@ export default function Dashboard() {
                 <stat.icon className="w-5 h-5" />
               </div>
               <span className={`text-xs px-2 py-1 rounded-full ${
-                stat.change === 'Healthy' || stat.change === 'Clear' || stat.change === 'Synced' 
+                (stat as any).good
                   ? 'bg-green-50 text-green-700' 
                   : 'bg-gray-100 text-gray-600'
               }`}>
@@ -295,9 +300,9 @@ export default function Dashboard() {
       {/* Modules Preview */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Business Modules</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">3 modules live • more coming</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 3 })}</span>
           </span>
         </div>
         
@@ -308,14 +313,14 @@ export default function Dashboard() {
                 <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${mod.color} flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform`}>
                   <mod.icon className="w-5 h-5" />
                 </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">{mod.count}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">{mod.count === 'Soon' ? t('c.soon') : mod.count}</span>
               </div>
-              <h3 className="font-semibold text-gray-900">{mod.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{mod.desc}</p>
+              <h3 className="font-semibold text-gray-900">{t(mod.name)}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t(mod.desc)}</p>
               <div className={`mt-3 flex items-center justify-between text-xs ${mod.implemented ? 'text-[#C1272D] font-medium' : 'text-gray-400'}`}>
                 <span className="flex items-center gap-1">
                   {mod.sub ? <AlertTriangle className="w-3 h-3 text-orange-500" /> : <TrendingUp className="w-3 h-3" />}
-                  {mod.sub || (mod.implemented ? 'Open module' : 'Ready for implementation')}
+                  {mod.sub || (mod.implemented ? t('dash.openModule') : t('dash.readyImpl'))}
                 </span>
                 {mod.implemented && <span>→</span>}
               </div>

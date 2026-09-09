@@ -4,8 +4,10 @@ import localDB from '../lib/db';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import syncEngine from '../lib/syncEngine';
+import { useT } from '../lib/i18n';
 
 export default function SyncStatusPage() {
+  const { t } = useT();
   const syncStatus = useSyncStatus();
   const onlineStatus = useOnlineStatus();
   const [queueItems, setQueueItems] = useState<any[]>([]);
@@ -43,8 +45,8 @@ export default function SyncStatusPage() {
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Synchronization Status</h1>
-          <p className="text-gray-500 mt-1">Offline-first sync engine • Pending/Synced/Failed/Conflict states</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('sync.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('sync.sub')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={handleRetry} className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm flex items-center gap-1.5">
@@ -68,7 +70,7 @@ export default function SyncStatusPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h3 className="font-bold mb-4">Queue Stats</h3>
+          <h3 className="font-bold mb-4">{t('sync.queueStats')}</h3>
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center p-3 rounded-xl bg-yellow-50 border border-yellow-200">
               <div className="text-xl font-bold text-yellow-700">{syncStatus.pending}</div>
@@ -91,16 +93,16 @@ export default function SyncStatusPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h3 className="font-bold mb-4">Connectivity</h3>
+          <h3 className="font-bold mb-4">{t('sync.connectivity')}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-              <span>Browser Online</span>
+              <span>{t('sync.browserOnline')}</span>
               <span className={`px-2 py-0.5 rounded-full text-xs ${onlineStatus.isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                 {onlineStatus.isOnline ? 'Yes' : 'No'}
               </span>
             </div>
             <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-              <span>Server Reachable</span>
+              <span>{t('sync.serverReach')}</span>
               <span className={`px-2 py-0.5 rounded-full text-xs ${onlineStatus.isServerReachable ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {onlineStatus.isServerReachable ? 'Yes' : 'No'}
               </span>
@@ -115,7 +117,7 @@ export default function SyncStatusPage() {
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="font-bold">Sync Queue (Offline-First)</h3>
+          <h3 className="font-bold">{t('sync.queue')}</h3>
           <span className="text-xs text-gray-500">{queueItems.length} total records • UUIDs • Versioned</span>
         </div>
         
@@ -123,12 +125,12 @@ export default function SyncStatusPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b text-xs text-gray-500 uppercase">
               <tr>
-                <th className="px-4 py-2 text-left">Entity</th>
-                <th className="px-4 py-2 text-left">Operation</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 text-left">Retry</th>
-                <th className="px-4 py-2 text-left">Created</th>
-                <th className="px-4 py-2 text-left">Actions</th>
+                <th className="px-4 py-2 text-left">{t('c.entity')}</th>
+                <th className="px-4 py-2 text-left">{t('c.operation')}</th>
+                <th className="px-4 py-2 text-left">{t('c.status')}</th>
+                <th className="px-4 py-2 text-left">{t('c.retry')}</th>
+                <th className="px-4 py-2 text-left">{t('c.created')}</th>
+                <th className="px-4 py-2 text-left">{t('c.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
@@ -136,8 +138,8 @@ export default function SyncStatusPage() {
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center">
                     <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                    <div className="text-gray-900 font-medium">All synced!</div>
-                    <div className="text-gray-500 text-xs mt-1">No pending operations • Offline queue empty</div>
+                    <div className="text-gray-900 font-medium">{t('sync.allSynced')}</div>
+                    <div className="text-gray-500 text-xs mt-1">{t('sync.queueEmpty')}</div>
                   </td>
                 </tr>
               ) : (
@@ -193,7 +195,7 @@ export default function SyncStatusPage() {
       </div>
 
       <div className="bg-gradient-to-r from-[#1A1A2E] to-[#2A2A4E] rounded-2xl p-6 text-white">
-        <h3 className="font-bold mb-2">Offline-First Verification Checklist</h3>
+        <h3 className="font-bold mb-2">{t('sync.checklist')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-white/80">
           <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-400" /> IndexedDB (not localStorage) as primary local DB</div>
           <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-400" /> UUIDs for all records (no auto-increment conflicts)</div>
