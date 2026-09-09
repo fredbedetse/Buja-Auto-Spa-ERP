@@ -41,3 +41,44 @@ body {
     padding-right: env(safe-area-inset-right);
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Phase 14: dark mode. Class strategy on <html>, scoped overrides of */
+/* the utility classes this app actually uses - one layer, all pages. */
+/* ------------------------------------------------------------------ */
+html.dark body { background: #0b1220; color: #e5ecf7; }
+html.dark { color-scheme: dark; }
+:where(html.dark) .bg-white { background-color: #111a2b; }
+:where(html.dark) .bg-gray-50, :where(html.dark) .bg-gray-100 { background-color: #16213a; }
+:where(html.dark) .bg-gray-200 { background-color: #1d2a45; }
+:where(html.dark) .border, :where(html.dark) [class*='border-gray-'] { border-color: #223050; }
+:where(html.dark) .text-gray-900, :where(html.dark) .text-gray-800 { color: #e5ecf7; }
+:where(html.dark) .text-gray-700, :where(html.dark) .text-gray-600 { color: #b8c4d9; }
+:where(html.dark) .text-gray-500, :where(html.dark) .text-gray-400 { color: #8ea0bf; }
+:where(html.dark) .bg-green-50 { background-color: color-mix(in srgb, #16A34A 14%, #101a2e); }
+:where(html.dark) .bg-red-50 { background-color: color-mix(in srgb, #EF4444 14%, #101a2e); }
+:where(html.dark) .bg-amber-50 { background-color: color-mix(in srgb, #F59E0B 14%, #101a2e); }
+:where(html.dark) .bg-blue-50 { background-color: color-mix(in srgb, #3B82F6 14%, #101a2e); }
+:where(html.dark) .bg-cyan-50 { background-color: color-mix(in srgb, #0EA5E9 14%, #101a2e); }
+:where(html.dark) .bg-slate-50 { background-color: #16213a; }
+:where(html.dark) .border-green-200 { border-color: color-mix(in srgb, #16A34A 40%, #223050); }
+:where(html.dark) .border-red-200 { border-color: color-mix(in srgb, #EF4444 40%, #223050); }
+:where(html.dark) .border-amber-200 { border-color: color-mix(in srgb, #F59E0B 40%, #223050); }
+:where(html.dark) .bg-amber-50.bg-red-50 { background-color: color-mix(in srgb, #EF4444 14%, #101a2e); }
+:where(html.dark) .hover\:bg-gray-50:hover, :where(html.dark) .hover\:bg-gray-100:hover { background-color: #1b2946; }
+:where(html.dark) .hover\:bg-green-50:hover { background-color: color-mix(in srgb, #16A34A 20%, #101a2e); }
+:where(html.dark) .hover\:bg-red-50:hover { background-color: color-mix(in srgb, #EF4444 20%, #101a2e); }
+:where(html.dark) input, :where(html.dark) select, :where(html.dark) textarea { background-color: #0e1728; color: #e5ecf7; border-color: #24334f; }
+:where(html.dark) input::placeholder, :where(html.dark) textarea::placeholder { color: #5d6f8f; }
+:where(html.dark) table thead { background-color: #0e1728; }
+:where(html.dark) ::-webkit-scrollbar-track { background: #0b1220; }
+:where(html.dark) ::-webkit-scrollbar-thumb { background: #24334f; }
+
+/* Phase 14: reduced motion preference */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}

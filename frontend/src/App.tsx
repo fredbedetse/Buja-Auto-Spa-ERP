@@ -18,6 +18,7 @@ import MaintenancePage from './pages/Maintenance';
 import RentalsPage from './pages/Rentals';
 import ReportsPage from './pages/Reports';
 import ExpensesPage from './pages/Expenses';
+import SettingsPage from './pages/Settings';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -95,7 +96,7 @@ export default function App() {
           <Route path="ev-rentals" element={<RentalsPage fleetClass="EV" />} />
           <Route path="truck-rentals" element={<RentalsPage fleetClass="TRUCK" />} />
           <Route path="reports" element={<ReportsPage />} />
-          <Route path="settings" element={<NotImplemented />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

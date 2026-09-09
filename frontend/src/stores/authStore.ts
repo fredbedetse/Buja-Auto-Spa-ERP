@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User, AuthState } from '../types';
 import apiClient from '../lib/api';
 import localDB from '../lib/db';
+import { resetSettingsPullFlag } from '../lib/settingsSync';
 
 interface AuthStore extends AuthState {
   login: (identifier: string, password: string) => Promise<void>;
@@ -57,6 +58,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Clear local data but keep device ID and sync queue?
       // For security, clear user but keep sync queue for later sync
       localStorage.removeItem('buja_user');
+      resetSettingsPullFlag();
       set({
         user: null,
         accessToken: null,

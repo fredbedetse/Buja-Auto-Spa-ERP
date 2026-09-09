@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -29,6 +29,7 @@ import {
   PackageCheck,
   Receipt
 } from 'lucide-react';
+import { pullPersonalSettings } from '../lib/settingsSync';
 import { useAuthStore } from '../stores/authStore';
 import { useT } from '../lib/i18n';
 import UiToggles from './UiToggles';
@@ -53,10 +54,11 @@ const navigation = [
   { key: 'nav.truckRentals', href: '/truck-rentals', icon: Truck, module: 'truckrentals:read' },
   { key: 'nav.reports', href: '/reports', icon: BarChart3, module: 'reports:read' },
   { key: 'nav.usersRoles', href: '/users', icon: Shield, module: 'users:read' },
-  { key: 'nav.settings', href: '/settings', icon: Settings, module: 'settings:read', soon: true },
+  { key: 'nav.settings', href: '/settings', icon: Settings, module: 'settings:read' },
 ];
 
 export default function Layout() {
+  useEffect(() => { pullPersonalSettings(); }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout, hasPermission } = useAuthStore();
   const onlineStatus = useOnlineStatus();
@@ -176,7 +178,7 @@ export default function Layout() {
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
               <span className="flex-1">{t(item.key)}</span>
-              {item.soon && (
+              {(item as any).soon && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">{t('c.soon')}</span>
               )}
             </NavLink>

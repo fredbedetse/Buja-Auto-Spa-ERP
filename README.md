@@ -484,6 +484,35 @@ buja-auto-spa-erp/
       payments 38, employees 27, brand 8, rentals 29, reports 19, expenses 24, smoke 10 - all demo
       baselines verified intact afterwards.
 
+## ✅ Phase 14 Implemented - Settings (all modules live)
+
+- [x] `AppSetting` store: JSON values under fixed keys, `GLOBAL` sentinel rows vs per-user rows,
+      unique `(key, userId)` with versioning; public `GET /api/settings/brand` (no auth) feeds the
+      login screen's company line, everything else sits behind the auth middleware.
+- [x] New `settings:read` / `settings:manage` permissions - read is granted to **every role**
+      (everyone may theme their own app), manage flows to ADMIN + SUPER_ADMIN only.
+- [x] Personal scope: theme (light / dark / system), reduce-motion, currency and language saved to
+      the server per user, mirrored to localStorage, and re-adopted on any new device at login.
+      A pre-paint bootstrap in `index.html` kills the white flash on reload.
+- [x] App-wide dark mode via one scoped CSS layer (`html.dark` + `color-mix` tints) - no page was
+      touched and both palettes pass the brand guard (still zero orange, BAS logo untouched).
+- [x] Company scope (manage): editable company name with audit; the location field is a locked
+      chip - the API actively refuses relocation with `LOCATION_LOCKED` ("The workshop stays in
+      Bujumbura. Location is part of the brand."); default currency/language for new accounts.
+- [x] **Who can be admin**: access panel lists every account with an admin toggle
+      (`PATCH /api/settings/admins/:id`) with guard rails - no self-demotion (`SELF_DEMOTE`),
+      the last admin cannot be removed (`LAST_ADMIN`), the founder's SUPER_ADMIN seat can neither
+      be granted nor revoked here (`OWNER_LOCKED`), every change audited.
+- [x] Data tools: sync health tiles (queued/failed/conflicts/engine), Sync now, full
+      workspace JSON export (local rows + preferences), and a confirm-gated local cache wipe.
+- [x] Settings is off the placeholder list - the "Soon" badge count across the nav is now **0**,
+      the dashboard chip reads "15 modules live", and every module route in the tour is live.
+- [x] 21-item backend curl battery (scopes, enums, guards, replays, 401/403/404s) + 28-check
+      Playwright suite `settings.js`; expenses suite's Soon-badge expectation retired in the same
+      commit. **Full matrix 270/270**: tour 24, wash 31, maint 32, payments 38, employees 27,
+      brand 8, rentals 29, reports 19, expenses 24, settings 28, smoke 10 - demo baselines
+      verified intact after the run (promoted admin demoted back, company name restored).
+
 ## 🔜 Next Phases
 
 
@@ -500,7 +529,8 @@ After foundation verification:
 - ~~EV Rentals / Truck Rentals~~ (completed in Phase 11)
 - ~~Reports~~ (completed in Phase 12)
 - ~~Expenses~~ (completed in Phase 13)
-- Settings is the only remaining "Soon" placeholder (non-operational)
+- ~~Settings~~ (completed in Phase 14 - every module is now live)
+- Remaining work is optional hardening only (deployment/productionization)
 
 All data-entry modules use the same offline-first pattern: local IndexedDB + sync queue + cloud sync.
 Reports needs no sync surface: it recomputes from local rows when offline.

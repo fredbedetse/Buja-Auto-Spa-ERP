@@ -14,9 +14,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Buja Auto Spa ERP</title>
+    <script>
+      // Phase 14: pre-paint theme bootstrap (avoids a white flash in dark mode)
+      try {
+        var st = JSON.parse(localStorage.getItem('buja-ui-prefs') || '{}');
+        var s = (st.state || st);
+        var theme = s.theme || 'light';
+        var dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+        if (s.reduceMotion) document.documentElement.classList.add('reduce-motion');
+      } catch (e) {}
+    </script>
     <style>
       * { font-family: 'Inter', system-ui, sans-serif; }
       body { margin: 0; background: #f8fafc; }
+      html.dark body { background: #0b1220; }
       #root { min-height: 100vh; }
       .loading-screen {
         display: flex;

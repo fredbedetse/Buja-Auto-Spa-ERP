@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useT } from '../lib/i18n';
 import UiToggles from '../components/UiToggles';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { getBrand } from '../lib/settingsSync';
 import { Eye, EyeOff, Truck, Wrench, Zap, Droplets, Shield, Wifi, Database, RefreshCw } from 'lucide-react';
 
 export default function Login() {
   const { t } = useT();
+  const [brand, setBrand] = useState<{ companyName: string; location: string } | null>(null);
+  useEffect(() => { getBrand().then(setBrand).catch(() => undefined); }, []);
 
   const [identifier, setIdentifier] = useState('admin@bujaautospa.bi');
   const [password, setPassword] = useState('Admin@123456');
@@ -54,7 +57,7 @@ export default function Login() {
               </div>
               <div>
                 <div className="font-bold text-xl tracking-wide">BUJA AUTO SPA</div>
-                <div className="text-xs text-white/60 tracking-[0.2em]">ENTERPRISE ERP</div>
+                <div className="text-xs text-white/60 tracking-[0.2em]">ENTERPRISE ERP · {brand?.companyName || 'Buja Auto Spa'}</div>
               </div>
             </div>
 
@@ -106,7 +109,7 @@ export default function Login() {
             </div>
             <div>
               <div className="font-bold text-gray-900">BUJA AUTO SPA</div>
-              <div className="text-xs text-gray-500 tracking-widest">ERP SYSTEM</div>
+              <div className="text-xs text-gray-500 tracking-widest">ERP SYSTEM · {brand?.companyName || 'Buja Auto Spa'}</div>
             </div>
           </div>
 

@@ -173,6 +173,10 @@ class ApiClient {
     });
   }
 
+  patch<T>(endpoint: string, data?: any, options?: RequestOptions) {
+    return this.request<T>(endpoint, { ...options, method: 'PATCH', body: data ? JSON.stringify(data) : undefined });
+  }
+
   delete<T>(endpoint: string, options?: RequestOptions) {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }

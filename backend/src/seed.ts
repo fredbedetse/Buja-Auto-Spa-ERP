@@ -81,6 +81,10 @@ async function seed() {
     { key: 'reports:read', module: 'reports', action: 'read', description: 'View reports' },
     { key: 'reports:manage', module: 'reports', action: 'manage', description: 'Manage reports' },
     
+    // Settings
+    { key: 'settings:read', module: 'settings', action: 'read', description: 'View and edit personal settings' },
+    { key: 'settings:manage', module: 'settings', action: 'manage', description: 'Company settings and admin designation' },
+
     // Expenses
     { key: 'expenses:read', module: 'expenses', action: 'read', description: 'View expense ledger' },
     { key: 'expenses:manage', module: 'expenses', action: 'manage', description: 'Record and edit expenses' },
@@ -710,6 +714,24 @@ async function seed() {
     console.log('Rental units present but no bookings - run a fresh seed for demo data');
   } else {
     console.log(`Rentals already present (${existingRentals} bookings), skipping`);
+  }
+
+  // Grant settings:read to every role (everyone may personalise their app);
+  // settings:manage flows automatically to ADMIN + SUPER_ADMIN via the
+  // all-permissions map above, so no extra grants are needed there.
+  {
+    const readPerms = await prisma.permission.findMany({ where: { key: 'settings:read' } });
+    if (readPerms.length) {
+      const allRoles = await prisma.role.findMany({ select: { id: true } });
+      for (const role of allRoles) {
+        await prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId: role.id, permissionId: readPerms[0].id } },
+          create: { roleId: role.id, permissionId: readPerms[0].id },
+          update: {},
+        });
+      }
+      console.log(`Granted settings:read to ${allRoles.length} roles`);
+    }
   }
 
   // Seed demo expenses (Phase 13) - only when the table is empty

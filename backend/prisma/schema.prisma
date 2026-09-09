@@ -511,6 +511,19 @@ model RentalUnit {
   @@index([updatedAt])
 }
 
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String
+  value     String   // JSON-encoded scalar/short object
+  userId    String   // 'GLOBAL' sentinel for company-wide rows, else user id
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, userId])
+  @@index([userId])
+}
+
 model Expense {
   id            String    @id @default(uuid())
   expenseNo     String    @unique // EXP-YYYY-NNNNN, server-assigned (TMP-EXP-xxx while offline)
