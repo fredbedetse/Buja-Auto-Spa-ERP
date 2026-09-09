@@ -18,6 +18,7 @@ import MaintenancePage from './pages/Maintenance';
 import RentalsPage from './pages/Rentals';
 import ReportsPage from './pages/Reports';
 import ExpensesPage from './pages/Expenses';
+import PayrollPage from './pages/Payroll';
 import SettingsPage from './pages/Settings';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="payroll" element={<PayrollPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="ev-rentals" element={<RentalsPage fleetClass="EV" />} />
           <Route path="truck-rentals" element={<RentalsPage fleetClass="TRUCK" />} />

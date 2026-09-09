@@ -81,6 +81,10 @@ async function seed() {
     { key: 'reports:read', module: 'reports', action: 'read', description: 'View reports' },
     { key: 'reports:manage', module: 'reports', action: 'manage', description: 'Manage reports' },
     
+    // Payroll
+    { key: 'payroll:read', module: 'payroll', action: 'read', description: 'View payroll runs (managers/admins only)' },
+    { key: 'payroll:manage', module: 'payroll', action: 'manage', description: 'Create, adjust and settle payroll runs' },
+
     // Settings
     { key: 'settings:read', module: 'settings', action: 'read', description: 'View and edit personal settings' },
     { key: 'settings:manage', module: 'settings', action: 'manage', description: 'Company settings and admin designation' },
@@ -142,6 +146,8 @@ async function seed() {
         'truckrentals:manage',
         'reports:read',
         'expenses:read',
+        'payroll:read',
+        'payroll:manage',
       ],
     },
     {
@@ -732,6 +738,31 @@ async function seed() {
       }
       console.log(`Granted settings:read to ${allRoles.length} roles`);
     }
+  }
+
+  // Seed a demo PAID payroll run (Phase 16) - previous month, only when empty
+  const existingRuns = await prisma.payrollRun.count();
+  if (existingRuns === 0) {
+    const now = new Date();
+    const py = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const pm = now.getMonth() === 0 ? 12 : now.getMonth(); // previous month, 1-based
+    const paidEmps = await prisma.employee.findMany({ where: { isDeleted: false, isActive: true, employmentStatus: 'ACTIVE' }, orderBy: { lastName: 'asc' } });
+    if (paidEmps.length) {
+      const settled = new Date(Date.UTC(py, pm - 1, 28, 10, 0, 0));
+      await prisma.payrollRun.create({
+        data: {
+          runNo: `PR-${py}-${String(pm).padStart(2, '0')}`, year: py, month: pm, status: 'PAID',
+          note: 'Seeded demo run - all staff settled by bank transfer', settledAt: settled, paymentMethod: 'BANK_TRANSFER',
+          items: { create: paidEmps.map(e => ({
+            employeeId: e.id, name: `${e.firstName} ${e.lastName}`, position: e.position,
+            baseSalary: Math.round(e.salary), net: Math.round(e.salary), paid: true, paidAt: settled, paymentMethod: 'BANK_TRANSFER',
+          })) },
+        },
+      });
+      console.log(`Seeded payroll run PR-${py}-${String(pm).padStart(2, '0')} (${paidEmps.length} employees)`);
+    }
+  } else {
+    console.log(`Payroll runs already present (${existingRuns}), skipping`);
   }
 
   // Seed demo expenses (Phase 13) - only when the table is empty

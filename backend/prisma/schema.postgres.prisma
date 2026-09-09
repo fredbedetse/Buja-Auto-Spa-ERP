@@ -455,6 +455,7 @@ model Employee {
   lastSyncedAt  DateTime?
   deviceId      String?
   isDeleted     Boolean  @default(false)
+  payrollItems  PayrollItem[]
 
   @@index([employmentStatus])
   @@index([position])
@@ -522,6 +523,50 @@ model AppSetting {
 
   @@unique([key, userId])
   @@index([userId])
+}
+
+model PayrollRun {
+  id           String   @id @default(uuid())
+  runNo        String   @unique // PR-YYYY-MM
+  year         Int
+  month        Int // 1-12
+  status       String   @default("OPEN") // OPEN | APPROVED | PAID
+  note         String?
+  settledAt    DateTime?
+  paymentMethod String? // run-level default used at settlement
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isDeleted    Boolean  @default(false)
+
+  items PayrollItem[]
+
+  @@unique([year, month])
+  @@index([status])
+}
+
+model PayrollItem {
+  id            String    @id @default(uuid())
+  runId         String
+  run           PayrollRun @relation(fields: [runId], references: [id])
+  employeeId    String
+  employee      Employee?  @relation(fields: [employeeId], references: [id])
+  name          String // snapshot at run creation
+  position      String // snapshot
+  baseSalary    Float  // snapshot of Employee.salary (monthly BIF)
+  bonus         Float    @default(0)
+  deduction     Float    @default(0)
+  net           Float // base + bonus - deduction, clamped >= 0, recomputed server-side
+  paid          Boolean  @default(false)
+  paidAt        DateTime?
+  paymentMethod String?
+  notes         String?
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
 }
 
 model Expense {

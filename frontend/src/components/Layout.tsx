@@ -27,8 +27,7 @@ import {
   Building2,
   UserCog,
   PackageCheck,
-  Receipt
-} from 'lucide-react';
+  Receipt, Banknote } from 'lucide-react';
 import { pullPersonalSettings } from '../lib/settingsSync';
 import { useAuthStore } from '../stores/authStore';
 import { useT } from '../lib/i18n';
@@ -49,6 +48,7 @@ const navigation = [
   { key: 'nav.payments', href: '/payments', icon: CreditCard, module: 'payments:read' },
   { key: 'nav.carwash', href: '/carwash', icon: Droplets, module: 'carwash:read' },
   { key: 'nav.expenses', href: '/expenses', icon: Receipt, module: 'expenses:read' },
+  { key: 'nav.payroll', href: '/payroll', icon: Banknote, module: 'payroll:read' },
   { key: 'nav.maintenance', href: '/maintenance', icon: Wrench, module: 'maintenance:read' },
   { key: 'nav.evRentals', href: '/ev-rentals', icon: Zap, module: 'evrentals:read' },
   { key: 'nav.truckRentals', href: '/truck-rentals', icon: Truck, module: 'truckrentals:read' },

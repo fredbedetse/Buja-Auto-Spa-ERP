@@ -4,8 +4,7 @@ import {
   TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
   Activity, HardDrive, Cloud, Smartphone, PackageCheck,
-  UserCog, FileText, CreditCard, Receipt
-} from 'lucide-react';
+  UserCog, FileText, CreditCard, Receipt, Banknote } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -37,6 +36,10 @@ interface SystemStats {
   truckRevToday: number;
   expMonth: number;
   expToday: number;
+  payRuns: number;
+  payPaidYear: number;
+  payHeadcount: number;
+  payOpen: { runNo: string; status: string } | null;
   maintRevenueToday: number;
   maintOverdue: number;
   invoiceCount: number;
@@ -78,6 +81,10 @@ export default function Dashboard() {
     truckRevToday: 0,
     expMonth: 0,
     expToday: 0,
+    payRuns: 0,
+    payPaidYear: 0,
+    payHeadcount: 0,
+    payOpen: null,
     maintRevenueToday: 0,
     maintOverdue: 0,
     invoiceCount: 0,
@@ -222,6 +229,12 @@ export default function Dashboard() {
         } catch {
           serverExp = null;
         }
+        let serverPayroll: any = null;
+        try {
+          serverPayroll = await apiClient.get<any>('/payroll/stats');
+        } catch {
+          serverPayroll = null; // 403 for non-managers - card is hidden for them anyway
+        }
         try {
           const istat = await apiClient.get<any>('/invoices/stats');
           serverInvoices = istat.total ?? null;
@@ -269,6 +282,10 @@ export default function Dashboard() {
           payMonth: serverPayMonth ?? 0,
           expMonth: serverExp?.month?.amount ?? 0,
           expToday: serverExp?.today?.amount ?? 0,
+          payRuns: serverPayroll?.runs ?? 0,
+          payPaidYear: serverPayroll?.paidThisYear?.amount ?? 0,
+          payHeadcount: serverPayroll?.headcount ?? 0,
+          payOpen: serverPayroll?.openRun ?? null,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -299,6 +316,7 @@ export default function Dashboard() {
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: String(stats.evActive), sub: stats.evActive > 0 ? t('dash.evSub', { n: stats.evUnits }) : undefined, desc: 'dash.evDesc', href: '/ev-rentals', implemented: true },
     { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: String(stats.truckActive), sub: stats.truckRevToday > 0 ? t('dash.truckSub', { money: fmtBif(stats.truckRevToday) }) : undefined, desc: 'dash.truckDesc', href: '/truck-rentals', implemented: true },
     { name: 'nav.expenses', icon: Receipt, color: 'from-rose-500 to-red-600', count: fmtBif(stats.expMonth), sub: stats.expToday > 0 ? t('dash.expSub', { money: fmtBif(stats.expToday) }) : undefined, desc: 'dash.expDesc', href: '/expenses', implemented: true },
+    ...(user?.permissions?.includes('payroll:read') ? [{ name: 'nav.payroll', icon: Banknote, color: 'from-emerald-600 to-green-700', count: fmtBif(stats.payPaidYear), sub: stats.payOpen ? t('pr.stat.open') + ': ' + stats.payOpen.runNo : t('pr.stat.runs') + ' · ' + stats.payRuns, desc: 'pr.desc', href: '/payroll', implemented: true }] : []),
 ];
 
   return (
@@ -466,7 +484,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 15 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 16 })}</span>
           </span>
         </div>
         

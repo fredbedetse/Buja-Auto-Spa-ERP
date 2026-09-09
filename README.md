@@ -513,6 +513,42 @@ buja-auto-spa-erp/
       brand 8, rentals 29, reports 19, expenses 24, settings 28, smoke 10 - demo baselines
       verified intact after the run (promoted admin demoted back, company name restored).
 
+## ✅ Phase 15 Implemented - Deployment hardening
+
+- **Boot guard**: with `NODE_ENV=production` the API refuses to start (exit 1) unless
+  `JWT_SECRET`/`JWT_REFRESH_SECRET` are set, distinct, ≥32 chars and not placeholder-ish,
+  plus `DATABASE_URL` and an explicit `CORS_ORIGIN`/`FRONTEND_URL`. Development is untouched.
+- **Middleware**: helmet (CSP + nosniff + frame-ancestors + HSTS in production), per-IP
+  login-rate limiting (`AUTH_RATE_MAX`, default 20/15min, 429 with `RATE_LIMITED` code) and
+  a global 600 req/min guard; CORS origins now come from `CORS_ORIGIN` (comma-separated).
+- **Ops**: JSON request logs (`JSON_LOGS=1`), Docker Compose stack (Postgres 16 + API with
+  `PRISMA_SCHEMA=postgres` schema swap + nginx SPA serving with `/api` proxy and correct
+  `sw.js` no-cache), `deploy/backup.sh`/`restore.sh` (sha256-verified), `rotate-secrets.sh`,
+  `backend/src/scripts/import-sqlite.ts` (SQLite→Postgres migrator), PM2 + systemd units for
+  non-Docker hosts - full runbook in **`DEPLOYMENT.md`**.
+- Verified: production-mode smoke (guard refuses weak config, helmet headers present,
+  5-then-429 login limiter, CORS allow-list enforced) and the full 270-check QA matrix
+  re-run with zero regressions.
+
+## ✅ Phase 16 Implemented - Payroll (manager/admin only)
+
+- **`PayrollRun` + `PayrollItem`**: one run per year+month (unique), items snapshot each
+  active employee's name/position/salary at creation so later HR edits never rewrite a
+  closed month; `net = base + bonus - deduction` recomputed server-side.
+- **Status machine**: `OPEN → APPROVED → PAID`; settle requires approval first, paid runs
+  are locked (`RUN_LOCKED`), only open runs can be deleted, and any item edit pulls an
+  approved run back to `OPEN` for re-review.
+- **Access control**: new `payroll:read` + `payroll:manage` permissions granted **only** to
+  MANAGER and ADMIN/SUPER_ADMIN - every other role (including ACCOUNTANT) gets 403, a
+  hidden nav item, and a lock card if the URL is typed directly.
+- **Online-only by design**: no Dexie store, no sync queue - a banner explains it and writes
+  are blocked while offline. Payslips display in EN/FR with BIF/USD per the user's money prefs.
+- Dashboard gained a payroll card (paid-this-year total, hidden for unauthorized roles) and
+  the module chip now reads "16 modules live"; `GET /api/payroll/stats` feeds both.
+- Seeded demo: `PR-2026-08` PAID run (4 active staff, 2,180,000 BIF, bank transfer).
+- QA: dedicated 29-check payroll suite (per-role gating end-to-end, approve/settle/unsettle
+  dance, bonus recompute, FR labels) + 12-suite matrix 299/299 re-run after restart.
+
 ## 🔜 Next Phases
 
 
@@ -530,15 +566,18 @@ After foundation verification:
 - ~~Reports~~ (completed in Phase 12)
 - ~~Expenses~~ (completed in Phase 13)
 - ~~Settings~~ (completed in Phase 14 - every module is now live)
-- Remaining work is optional hardening only (deployment/productionization)
+- ~~Deployment hardening~~ (completed in Phase 15)
+- ~~Payroll~~ (completed in Phase 16 - module 16, manager/admin only)
 
 All data-entry modules use the same offline-first pattern: local IndexedDB + sync queue + cloud sync.
 Reports needs no sync surface: it recomputes from local rows when offline.
 
 ## 🌍 Deployment
 
-- Backend: Can deploy to any Node.js host, switch DATABASE_URL to PostgreSQL
-- Frontend: Static build (dist) deploy to Vercel/Netlify, PWA works offline
+- One-command Docker: `docker compose up -d` (Postgres 16 + hardened API + nginx SPA) - see `DEPLOYMENT.md`
+- Bare-metal alternatives: PM2 (`deploy/ecosystem.config.cjs`) or systemd (`deploy/systemd-buja-api.service`)
+- Prod refuses to boot with weak config (secrets, CORS, DB) - guards verified; backups/restore/rotation in `deploy/`
+- Frontend: static `dist` behind nginx (cache-tuned, PWA works offline) or any CDN
 
 ## 📄 License
 
