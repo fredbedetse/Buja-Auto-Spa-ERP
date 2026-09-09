@@ -10,7 +10,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 
 // Register service worker for PWA
-if ('serviceWorker' in navigator) {
+// In dev, vite-plugin-pwa injects its own SW registration into index.html,
+// so manual registration here would race it with an invalid URL. Register only in prod.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(
       (registration) => {

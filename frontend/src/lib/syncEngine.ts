@@ -146,6 +146,35 @@ class SyncEngine {
             updatedAt: new Date().toISOString(),
             errorMessage: undefined,
           });
+
+          // Mark the local entity record clean too (server accepted it).
+          // Without this, dirty records keep showing "Pending" forever after
+          // their queue item drains, and pull keeps skipping fresh server data.
+          if (queueItem.operation !== 'DELETE') {
+            try {
+              if (result.entityType === 'User') {
+                await localDB.users.update(result.entityId, {
+                  _dirty: false,
+                  syncStatus: 'SYNCED',
+                  ...(result.version ? { version: result.version } : {}),
+                } as any);
+              } else if (result.entityType === 'Customer') {
+                await localDB.customers.update(result.entityId, {
+                  _dirty: false,
+                  syncStatus: 'SYNCED',
+                  ...(result.version ? { version: result.version } : {}),
+                } as any);
+              } else if (result.entityType === 'Product') {
+                await localDB.inventory.update(result.entityId, {
+                  _dirty: false,
+                  syncStatus: 'SYNCED',
+                  ...(result.version ? { version: result.version } : {}),
+                } as any);
+              }
+            } catch (e) {
+              console.warn('Could not mark record synced locally:', e);
+            }
+          }
           pushed++;
         } else if (result.status === 'CONFLICT') {
           await localDB.syncQueue.update(queueItem.id, {
