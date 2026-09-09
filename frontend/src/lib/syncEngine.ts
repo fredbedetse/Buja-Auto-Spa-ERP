@@ -224,6 +224,12 @@ class SyncEngine {
                 if (result.version) rup.version = result.version;
                 if ((result as any).bookingNo) rup.bookingNo = (result as any).bookingNo;
                 await localDB.rentalBookings.update(result.entityId, rup);
+              } else if (result.entityType === 'Expense') {
+                // Server assigned the canonical EXP number to the offline row
+                const eup: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) eup.version = result.version;
+                if ((result as any).expenseNo) eup.expenseNo = (result as any).expenseNo;
+                await localDB.expenses.update(result.entityId, eup);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -432,6 +438,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.maintenanceOrders.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'Expense') {
+            if (change.operation === 'DELETE') {
+              await localDB.expenses.delete(change.entityId);
+            } else {
+              const existing = await localDB.expenses.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.expenses.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'RentalBooking') {
@@ -730,6 +748,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'RentalBooking') {
           await localDB.rentalBookings.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Expense') {
+          await localDB.expenses.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

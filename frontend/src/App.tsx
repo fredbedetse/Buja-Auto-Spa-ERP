@@ -17,6 +17,7 @@ import CarWashPage from './pages/CarWash';
 import MaintenancePage from './pages/Maintenance';
 import RentalsPage from './pages/Rentals';
 import ReportsPage from './pages/Reports';
+import ExpensesPage from './pages/Expenses';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -89,7 +90,7 @@ export default function App() {
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="sales" element={<SalesPage />} />
-          <Route path="expenses" element={<NotImplemented />} />
+          <Route path="expenses" element={<ExpensesPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="ev-rentals" element={<RentalsPage fleetClass="EV" />} />
           <Route path="truck-rentals" element={<RentalsPage fleetClass="TRUCK" />} />

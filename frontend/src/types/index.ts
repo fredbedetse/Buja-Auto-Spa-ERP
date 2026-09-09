@@ -235,6 +235,21 @@ export interface MaintenanceOrder {
   syncStatus?: SyncStatus;
 }
 
+export interface Expense {
+  id: string;
+  expenseNo: string; // EXP-YYYY-NNNNN (TMP-EXP-xxx while offline)
+  category: 'FUEL' | 'RENT' | 'UTILITIES' | 'SUPPLIES' | 'INSURANCE' | 'TRANSPORT' | 'MARKETING' | 'MISC';
+  amount: number; // canonical BIF
+  date: string;
+  vendor?: string | null;
+  paidBy?: string | null;
+  paymentMethod: string;
+  notes?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RentalUnit {
   id: string;
   name: string;

@@ -31,6 +31,7 @@ interface Summary {
   daily: { date: string; carwash: number; maintenance: number; rentals: number; sales: number; cash: number; total: number }[];
   topProducts: { name: string; qty: number; amount: number }[];
   purchases: { count: number; amount: number };
+  expenses?: { count: number; amount: number; byCategory?: Record<string, number>; net?: number };
   payables: number;
   receivables: number;
   payroll: { headcount: number; monthly: number };
@@ -50,10 +51,10 @@ async function computeLocal(from: Date, to: Date): Promise<Summary> {
   const inWin = (d: any, k: string) => { const t = d[k] ? new Date(d[k]).getTime() : 0; return t >= from.getTime() && t < end.getTime(); };
   const sum = (xs: any[], k: string) => xs.reduce((a, x) => a + (Number(x[k]) || 0), 0);
 
-  const [washAll, maintAll, rentalsAll, salesAll, payAll, purchAll, prods, emps, vehicles, units] = await Promise.all([
+  const [washAll, maintAll, rentalsAll, salesAll, payAll, purchAll, expAll, prods, emps, vehicles, units] = await Promise.all([
     localDB.washOrders.toArray(), localDB.maintenanceOrders.toArray(), localDB.rentalBookings.toArray(),
     localDB.sales.toArray(), localDB.payments.toArray(), localDB.purchases.toArray(),
-    localDB.inventory.toArray(), localDB.employees.toArray(), localDB.vehicles.toArray(), localDB.rentalUnits.toArray(),
+    localDB.expenses.toArray(), localDB.inventory.toArray(), localDB.employees.toArray(), localDB.vehicles.toArray(), localDB.rentalUnits.toArray(),
   ]);
   const wash = washAll.filter(o => !(o as any).isDeleted && o.status === 'COMPLETED' && inWin(o, 'completedAt'));
   const maint = maintAll.filter(o => !(o as any).isDeleted && o.status === 'COMPLETED' && inWin(o, 'completedAt'));
@@ -127,6 +128,13 @@ async function computeLocal(from: Date, to: Date): Promise<Summary> {
     daily,
     topProducts: [...prodMap.entries()].map(([name, v]) => ({ name, qty: v.qty, amount: v.amount })).sort((a, b) => b.amount - a.amount).slice(0, 8),
     purchases: { count: purch.length, amount: sum(purch, 'total') },
+    expenses: (() => {
+      const ex = expAll.filter(o => !(o as any).isDeleted && inWin(o, 'date'));
+      const amount = sum(ex, 'amount');
+      const byCategory: Record<string, number> = {};
+      for (const x of ex) byCategory[x.category] = (byCategory[x.category] || 0) + (Number(x.amount) || 0);
+      return { count: ex.length, amount, byCategory, net: (rev.carwash.amount + rev.maintenance.amount + rentAmt + salesAmt) - amount };
+    })(),
     payables: sum(purchAll.filter(o => !(o as any).isDeleted && (o as any).status === 'RECEIVED' && (o as any).balance > 0), 'balance'),
     receivables: sum(salesAll.filter(o => !(o as any).isDeleted && (o as any).status === 'COMPLETED' && (o as any).balance > 0), 'balance'),
     payroll: { headcount: emps.filter(e => !(e as any).isDeleted && e.isActive).length, monthly: sum(emps.filter(e => !(e as any).isDeleted && e.isActive), 'salary') },
@@ -193,6 +201,7 @@ export default function ReportsPage() {
     rows.push([]);
     rows.push(['Receivables', R.receivables]);
     rows.push(['Payables', R.payables]);
+    rows.push(['Expenses', R.expenses?.count ?? 0, R.expenses?.amount ?? 0, 'Net after expenses', R.expenses?.net ?? 0]);
     rows.push(['Payroll/month', R.payroll.monthly, R.payroll.headcount + ' staff']);
     rows.push(['Stock value', R.inventory.stockValue, R.inventory.products + ' SKUs', R.inventory.lowStock + ' low']);
     const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -358,6 +367,12 @@ export default function ReportsPage() {
               <Truck size={13} className="text-gray-400" />
               <span>{t('rep.purchasesLine', { n: String(R.purchases.count), money: money.fmt(R.purchases.amount) })}</span>
             </div>
+            {(R.expenses?.count ?? 0) > 0 && (
+              <div className="flex items-center gap-2 text-xs text-gray-600" data-testid="rep-expenses-line">
+                <Wallet size={13} className="text-red-400" />
+                <span>{t('rep.expensesLine', { n: String(R.expenses!.count), money: money.fmt(R.expenses!.amount), net: money.fmt(R.expenses!.net ?? 0) })}</span>
+              </div>
+            )}
             <div className="text-[10px] text-gray-400">{t('rep.generated', { at: new Date(R.generatedAt).toLocaleString() })} · {source === 'cloud' ? t('rep.srcServer') : t('rep.srcLocal')}</div>
           </div>
         </div>

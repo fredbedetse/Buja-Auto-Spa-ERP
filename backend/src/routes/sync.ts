@@ -9,6 +9,7 @@ import { buildMaintLines, linesTotal, tryApplyMaintStock, parseLines, diffStock 
 import { nextMaintOrderNo } from '../routes/maintenance';
 import { priceBooking, overtimeFee, rentalDays } from '../lib/rentalCatalog';
 import { nextBookingNo } from '../routes/rentals';
+import { nextExpenseNo, EXPENSE_CATEGORIES } from '../routes/expenses';
 import { buildSaleTxn } from './sales';
 import { buildPurchaseTxn } from './purchases';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -1082,6 +1083,70 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Expense') {
+          const existing = await prisma.expense.findUnique({ where: { id: entityId } });
+          const midnightE = (v: any) => new Date(new Date(v).setUTCHours(0, 0, 0, 0));
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version, expenseNo: existing.expenseNo });
+              continue;
+            }
+            const { id: _eid, expenseNo: _eno, deviceId: _ed, version: _ev, ...eRest } = data || {};
+            const amt = Math.round(Number(eRest.amount));
+            if (!(amt > 0)) { results.push({ entityType, entityId, status: 'FAILED', error: 'Amount must be positive' }); continue; }
+            const cat = (EXPENSE_CATEGORIES as readonly string[]).includes(eRest.category) ? eRest.category : 'MISC';
+            const date = midnightE(eRest.date || change.timestamp || new Date());
+            try {
+              const expenseNo = await nextExpenseNo(date.getUTCFullYear());
+              const created = await prisma.expense.create({
+                data: {
+                  id: entityId, expenseNo, category: cat, amount: amt, date,
+                  vendor: eRest.vendor || null, paidBy: eRest.paidBy || null,
+                  paymentMethod: ['CASH', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CHEQUE'].includes(eRest.paymentMethod) ? eRest.paymentMethod : 'CASH',
+                  notes: eRest.notes || null, lastSyncedAt: new Date(), deviceId,
+                },
+              });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: 1, expenseNo: created.expenseNo });
+            } catch (e: any) {
+              results.push({ entityType, entityId, status: 'FAILED', error: e?.code === 'P2002' ? 'Expense number race - retry' : 'Create failed' });
+            }
+
+          } else if (operation === 'UPDATE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'FAILED', error: existing ? 'Removed server-side' : 'Expense not found on server' });
+              continue;
+            }
+            const clientV = data?.version ?? clientVersion ?? version;
+            if (clientV !== undefined && clientV !== null && existing.version !== clientV) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+            const d = data || {};
+            const upd: any = { lastSyncedAt: new Date(), deviceId, version: { increment: 1 } };
+            if ((EXPENSE_CATEGORIES as readonly string[]).includes(d.category)) upd.category = d.category;
+            if (d.amount !== undefined) { const amt = Math.round(Number(d.amount)); if (amt > 0) upd.amount = amt; }
+            if (d.date) upd.date = midnightE(d.date);
+            if (d.vendor !== undefined) upd.vendor = d.vendor || null;
+            if (d.paidBy !== undefined) upd.paidBy = d.paidBy || null;
+            if (['CASH', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CHEQUE'].includes(d.paymentMethod)) upd.paymentMethod = d.paymentMethod;
+            if (d.notes !== undefined) upd.notes = d.notes || null;
+            const updated = await prisma.expense.update({ where: { id: entityId }, data: upd });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+
+          } else if (operation === 'DELETE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already removed' });
+              continue;
+            }
+            await prisma.expense.update({ where: { id: entityId }, data: { isDeleted: true, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Employee') {
           const existing = await prisma.employee.findUnique({ where: { id: entityId } });
 
@@ -1501,6 +1566,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: b,
         version: b.version,
         timestamp: b.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Expense')) {
+      const rows = await prisma.expense.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...rows.map(x => ({
+        entityType: 'Expense',
+        entityId: x.id,
+        operation: 'UPDATE',
+        data: x,
+        version: x.version,
+        timestamp: x.updatedAt.toISOString(),
       })));
     }
 

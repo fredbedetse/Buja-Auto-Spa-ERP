@@ -35,13 +35,14 @@ router.get('/summary', authorize(['reports:read', 'reports:manage']), async (req
     const end = new Date(to.getTime() + DAY); // exclusive
 
     // ---- revenue sources (completed/returned jobs bill; sales bill at saleDate; cash = payments)
-    const [washRows, maintRows, rentalRows, saleRows, payRows, purchaseRows] = await Promise.all([
+    const [washRows, maintRows, rentalRows, saleRows, payRows, purchaseRows, expenseRows] = await Promise.all([
       prisma.carWashOrder.findMany({ where: { isDeleted: false, status: 'COMPLETED', completedAt: { gte: from, lt: end } }, select: { totalAmount: true, paymentMethod: true, completedAt: true } }),
       prisma.maintenanceOrder.findMany({ where: { isDeleted: false, status: 'COMPLETED', completedAt: { gte: from, lt: end } }, select: { totalAmount: true, paymentMethod: true, completedAt: true, partsJson: true } }),
       prisma.rentalBooking.findMany({ where: { isDeleted: false, status: 'RETURNED', returnedAt: { gte: from, lt: end } }, select: { fleetClass: true, totalAmount: true, paymentMethod: true, returnedAt: true } }),
       prisma.sale.findMany({ where: { isDeleted: false, status: 'COMPLETED', saleDate: { gte: from, lt: end } }, select: { total: true, paymentMethod: true, saleDate: true, items: { select: { productName: true, quantity: true, lineTotal: true } } } }),
       prisma.payment.findMany({ where: { isDeleted: false, status: 'COMPLETED', paymentDate: { gte: from, lt: end } }, select: { amount: true, paymentMethod: true, paymentDate: true } }),
       prisma.purchase.findMany({ where: { isDeleted: false, status: 'RECEIVED', orderDate: { gte: from, lt: end } }, select: { total: true, balance: true } }),
+      prisma.expense.findMany({ where: { isDeleted: false, date: { gte: from, lt: end } }, select: { amount: true, category: true } }),
     ]);
 
     const sum = (xs: any[], k: string) => xs.reduce((a, x) => a + (Number(x[k]) || 0), 0);
@@ -142,6 +143,11 @@ router.get('/summary', authorize(['reports:read', 'reports:manage']), async (req
       cash: { received: cashReceived, byMethod },
       daily,
       topProducts,
+      expenses: (() => {
+        const byCat: Record<string, number> = {};
+        for (const x of expenseRows) byCat[x.category] = (byCat[x.category] || 0) + r100(x.amount);
+        return { count: expenseRows.length, amount: r100(sum(expenseRows, 'amount')), byCategory: byCat, net: billed - r100(sum(expenseRows, 'amount')) };
+      })(),
       purchases: { count: purchaseRows.length, amount: r100(sum(purchaseRows, 'total')) },
       payables: r100(apAgg._sum.balance || 0),
       receivables: r100(arAgg._sum.balance || 0),

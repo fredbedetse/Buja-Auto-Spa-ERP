@@ -456,7 +456,36 @@ buja-auto-spa-erp/
       employees 27, brand 8, rentals 29, reports 19 + smoke 10 - **218/218 green**; all demo
       baselines unchanged (Reports is read-only) and the module chip reads "13 modules live".
 
+## ✅ Phase 13 Implemented - Expenses (ledger complete)
+
+- [x] `Expense` model (server-assigned `EXP-YYYY-NNNNN` numbering, category, amount in canonical
+      BIF, vendor / paid-by / method / notes) with a `20260909213314_add_expenses` migration.
+- [x] `expenses:read` / `expenses:manage` permissions seeded and granted (MANAGER+VIEWER-style read;
+      ACCOUNTANT+ADMIN full); routes enforce them, and the sidebar item appears for read roles only.
+- [x] REST CRUD at `/api/expenses` (idempotent create on client uuid, optimistic-lock edit -> 409,
+      tombstone delete, list with category/date/search filters, `/stats` for today/month/by-category)
+      plus audit (`EXPENSE_*`) and sync-log entries on every write.
+- [x] Full sync coverage: push branches (CREATE with server re-numbering + validation, versioned
+      UPDATE with conflict capture, DELETE tombstone) and Expense rows in `/sync/pull`.
+- [x] Expenses board (sidebar: after Payments): spend stat cards, category chips with color dots,
+      search, ledger table with per-row sync chips, and an add/edit modal whose amount is entered in
+      the display currency and previews the exact BIF figure it will post as.
+- [x] Offline: rows land as `TMP-EXP-xxx` with a queued chip and self-heal to the canonical
+      `EXP-2026-xxxxx` when the queue drains; read-only roles see the board without write buttons.
+- [x] Reports integration: the 30-day summary now carries `expenses {count, amount, byCategory, net}`
+      (net = billed - spend), shown on the cash card and in the CSV export; Dashboard gets a live
+      "Operating Spend" card (month total + today) and the module chip reads "14 modules live".
+- [x] Seeded ledger: 6 dated demo expenses (rent, insurance, utilities, marketing, supplies, fuel)
+      totalling 690,000 BIF this month.
+- [x] Backend curl battery (CRUD/numbering/idempotency/version-conflict/stats/sync replay/CONFLICT/
+      RBAC 403s/401s) plus a 24-check Playwright suite `expenses.js` (offline queue + sync self-heal,
+      reports parity, read-only gating, EN/FR, USD peg); brand guard caught and forced removal of an
+      orange gradient (rose->red instead). Full matrix 242/242 green: tour 24, wash 31, maint 32,
+      payments 38, employees 27, brand 8, rentals 29, reports 19, expenses 24, smoke 10 - all demo
+      baselines verified intact afterwards.
+
 ## 🔜 Next Phases
+
 
 After foundation verification:
 - ~~Customers module~~ (completed in Phase 2)
@@ -469,8 +498,9 @@ After foundation verification:
 - ~~Car Wash~~ (completed in Phase 9)
 - ~~Maintenance~~ (completed in Phase 10)
 - ~~EV Rentals / Truck Rentals~~ (completed in Phase 11)
-- ~~Reports~~ (completed in Phase 12 - the last operational module)
-- Expenses and Settings remain as "Soon" placeholders
+- ~~Reports~~ (completed in Phase 12)
+- ~~Expenses~~ (completed in Phase 13)
+- Settings is the only remaining "Soon" placeholder (non-operational)
 
 All data-entry modules use the same offline-first pattern: local IndexedDB + sync queue + cloud sync.
 Reports needs no sync surface: it recomputes from local rows when offline.

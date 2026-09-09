@@ -4,7 +4,7 @@ import {
   TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
   Activity, HardDrive, Cloud, Smartphone, PackageCheck,
-  UserCog, FileText, CreditCard
+  UserCog, FileText, CreditCard, Receipt
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -35,6 +35,8 @@ interface SystemStats {
   evActive: number;
   truckActive: number;
   truckRevToday: number;
+  expMonth: number;
+  expToday: number;
   maintRevenueToday: number;
   maintOverdue: number;
   invoiceCount: number;
@@ -74,6 +76,8 @@ export default function Dashboard() {
     evActive: 0,
     truckActive: 0,
     truckRevToday: 0,
+    expMonth: 0,
+    expToday: 0,
     maintRevenueToday: 0,
     maintOverdue: 0,
     invoiceCount: 0,
@@ -144,6 +148,7 @@ export default function Dashboard() {
         let serverInvoices: number | null = null;
         let serverInvOut: number | null = null;
         let serverPayMonth: number | null = null;
+        let serverExp: any = null;
         try {
           const sstats = await apiClient.get<any>('/sales/stats');
           serverSales = sstats.total ?? null;
@@ -213,6 +218,11 @@ export default function Dashboard() {
           serverTruck = null;
         }
         try {
+          serverExp = await apiClient.get<any>('/expenses/stats');
+        } catch {
+          serverExp = null;
+        }
+        try {
           const istat = await apiClient.get<any>('/invoices/stats');
           serverInvoices = istat.total ?? null;
           const payStat = await apiClient.get<any>('/payments/stats');
@@ -257,6 +267,8 @@ export default function Dashboard() {
           invoiceCount: serverInvoices ?? (await localDB.sales.count()),
           invOutstanding: serverInvOut ?? 0,
           payMonth: serverPayMonth ?? 0,
+          expMonth: serverExp?.month?.amount ?? 0,
+          expToday: serverExp?.today?.amount ?? 0,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -286,6 +298,7 @@ export default function Dashboard() {
         { name: 'nav.maintenance', icon: Wrench, color: 'from-sky-500 to-[#16A34A]', count: String(stats.maintTotal), sub: stats.maintOverdue > 0 ? t('dash.maintOverdue', { n: stats.maintOverdue }) : (stats.maintRevenueToday > 0 ? t('dash.maintSub', { money: fmtBif(stats.maintRevenueToday) }) : undefined), desc: 'dash.maintDesc', href: '/maintenance', implemented: true },
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: String(stats.evActive), sub: stats.evActive > 0 ? t('dash.evSub', { n: stats.evUnits }) : undefined, desc: 'dash.evDesc', href: '/ev-rentals', implemented: true },
     { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: String(stats.truckActive), sub: stats.truckRevToday > 0 ? t('dash.truckSub', { money: fmtBif(stats.truckRevToday) }) : undefined, desc: 'dash.truckDesc', href: '/truck-rentals', implemented: true },
+    { name: 'nav.expenses', icon: Receipt, color: 'from-rose-500 to-red-600', count: fmtBif(stats.expMonth), sub: stats.expToday > 0 ? t('dash.expSub', { money: fmtBif(stats.expToday) }) : undefined, desc: 'dash.expDesc', href: '/expenses', implemented: true },
 ];
 
   return (
@@ -453,7 +466,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 13 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 14 })}</span>
           </span>
         </div>
         

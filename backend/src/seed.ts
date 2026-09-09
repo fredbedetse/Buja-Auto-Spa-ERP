@@ -81,6 +81,10 @@ async function seed() {
     { key: 'reports:read', module: 'reports', action: 'read', description: 'View reports' },
     { key: 'reports:manage', module: 'reports', action: 'manage', description: 'Manage reports' },
     
+    // Expenses
+    { key: 'expenses:read', module: 'expenses', action: 'read', description: 'View expense ledger' },
+    { key: 'expenses:manage', module: 'expenses', action: 'manage', description: 'Record and edit expenses' },
+
     // Settings
     { key: 'settings:read', module: 'settings', action: 'read', description: 'View settings' },
     { key: 'settings:manage', module: 'settings', action: 'manage', description: 'Manage settings' },
@@ -133,6 +137,7 @@ async function seed() {
         'evrentals:manage',
         'truckrentals:manage',
         'reports:read',
+        'expenses:read',
       ],
     },
     {
@@ -141,6 +146,7 @@ async function seed() {
       description: 'Handles sales, payments, invoices',
       isSystem: false,
       permissions: [
+        'expenses:read',
         'dashboard:read',
         'customers:read',
         'customers:create',
@@ -209,6 +215,8 @@ async function seed() {
         'payments:read',
         'reports:read',
         'reports:manage',
+        'expenses:read',
+        'expenses:manage',
         'employees:read',
       ],
     },
@@ -702,6 +710,40 @@ async function seed() {
     console.log('Rental units present but no bookings - run a fresh seed for demo data');
   } else {
     console.log(`Rentals already present (${existingRentals} bookings), skipping`);
+  }
+
+  // Seed demo expenses (Phase 13) - only when the table is empty
+  const existingExpenses = await prisma.expense.count();
+  if (existingExpenses === 0) {
+    const DAY = 86400000;
+    const now = new Date();
+    const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const back = (k: number) => {
+      const raw = new Date(now.getTime() - k * DAY).setUTCHours(0, 0, 0, 0);
+      return new Date(Math.max(raw, firstOfMonth.getTime()));
+    };
+    const year = now.getUTCFullYear();
+    const expenseDefs = [
+      { cat: 'RENT', amt: 350000, d: back(8), vendor: 'Kigoma Road Property Ltd', pay: 'BANK_TRANSFER', who: 'Fred Bedetse', note: 'Workshop + office rent, monthly' },
+      { cat: 'INSURANCE', amt: 120000, d: back(6), vendor: 'SIAR Insurance', pay: 'BANK_TRANSFER', who: 'Fred Bedetse', note: 'Fleet liability cover - premium instalment' },
+      { cat: 'UTILITIES', amt: 85000, d: back(4), vendor: 'REGIDESO / SNEL', pay: 'MOBILE_MONEY', who: 'Claudine Irakoze', note: 'Water + power' },
+      { cat: 'MARKETING', amt: 45000, d: back(2), vendor: 'Radio Isanganiro', pay: 'CASH', who: 'Claude Niyonkuru', note: 'Weekend spot pack for wash promos' },
+      { cat: 'SUPPLIES', amt: 30000, d: back(5), vendor: 'Bujumbura Office Mart', pay: 'CASH', who: 'Claudine Irakoze', note: 'Cleaning + printer toner' },
+      { cat: 'FUEL', amt: 60000, d: back(0), vendor: 'Puma Energy Bujumbura', pay: 'CASH', who: 'Eric Hakizimana', note: 'Trucks refuel before the Kiwumu haul' },
+    ];
+    let seq = 1;
+    for (const x of expenseDefs) {
+      await prisma.expense.create({
+        data: {
+          expenseNo: `EXP-${year}-${String(seq++).padStart(5, '0')}`,
+          category: x.cat, amount: x.amt, date: x.d, vendor: x.vendor, paidBy: x.who,
+          paymentMethod: x.pay, notes: x.note, lastSyncedAt: new Date(),
+        },
+      });
+    }
+    console.log(`Seeded ${expenseDefs.length} demo expenses`);
+  } else {
+    console.log(`Expenses already present (${existingExpenses}), skipping`);
   }
 
   // Seed demo employees (Phase 7) - only when table is empty

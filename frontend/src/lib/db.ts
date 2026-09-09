@@ -6,6 +6,7 @@ import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employ
   MaintPartLine,
   RentalUnit,
   RentalBooking,
+  Expense,
 } from '../types';
 
 export interface LocalUser extends User {
@@ -46,6 +47,11 @@ export interface LocalEmployee extends Employee {
 }
 
 export interface LocalWashOrder extends WashOrder {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
+export interface LocalExpense extends Expense {
   syncStatus?: SyncStatus;
   _dirty?: boolean;
 }
@@ -106,6 +112,7 @@ class BujaLocalDB extends Dexie {
   maintenanceOrders!: Table<LocalMaintenanceOrder, string>;
   rentalUnits!: Table<RentalUnit, string>;
   rentalBookings!: Table<LocalRentalBooking, string>;
+  expenses!: Table<LocalExpense, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -176,6 +183,11 @@ class BujaLocalDB extends Dexie {
     this.version(11).stores({
       rentalUnits: 'id, fleetClass, status, name, updatedAt',
       rentalBookings: 'id, bookingNo, status, fleetClass, unitId, startDate, updatedAt, syncStatus',
+    });
+
+    // Version 12 - Expenses (Phase 13): fully offline ledger with number self-heal
+    this.version(12).stores({
+      expenses: 'id, expenseNo, category, date, updatedAt, syncStatus',
     });
   }
 

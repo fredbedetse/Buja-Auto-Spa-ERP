@@ -511,6 +511,27 @@ model RentalUnit {
   @@index([updatedAt])
 }
 
+model Expense {
+  id            String    @id @default(uuid())
+  expenseNo     String    @unique // EXP-YYYY-NNNNN, server-assigned (TMP-EXP-xxx while offline)
+  category      String    // FUEL | RENT | UTILITIES | SUPPLIES | INSURANCE | TRANSPORT | MARKETING | MISC
+  amount        Float     // canonical BIF, rounded at write
+  date          DateTime
+  vendor        String?
+  paidBy        String?
+  paymentMethod String    @default("CASH") // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  notes         String?
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean   @default(false)
+
+  @@index([category, date])
+  @@index([updatedAt, isDeleted])
+}
+
 model RentalBooking {
   id         String  @id @default(uuid())
   bookingNo  String  @unique // EVR-/TRR-YYYY-NNNNN server-assigned (TMP-RNT-xxx while offline)
