@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import UsersPage from './pages/Users';
 import CustomersPage from './pages/Customers';
+import InventoryPage from './pages/Inventory';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
 
@@ -71,7 +72,7 @@ export default function App() {
           <Route path="suppliers" element={<NotImplemented />} />
           <Route path="vehicles" element={<NotImplemented />} />
           <Route path="employees" element={<NotImplemented />} />
-          <Route path="inventory" element={<NotImplemented />} />
+          <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<NotImplemented />} />
           <Route path="sales" element={<NotImplemented />} />
           <Route path="invoices" element={<NotImplemented />} />

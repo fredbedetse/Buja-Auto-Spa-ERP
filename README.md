@@ -66,6 +66,16 @@ This ERP is designed to **continue operating when internet is unavailable** and 
 - [x] Dashboard shows live customer counts (cloud when online, IndexedDB when offline)
 - [x] Seed data: 6 demo customers (idempotent)
 
+## ✅ Phase 3 Implemented - Inventory / Truck Parts
+
+- [x] `Product` model in Prisma (SKU unique, stock & reorder levels, BIF prices, sync metadata) + migration
+- [x] CRUD API `/api/inventory` with search, category & low-stock filters, `/stats`, `/categories`, RBAC guards
+- [x] Optimistic locking + audit logs (same contract as Customers)
+- [x] Sync engine handles `Product` CREATE/UPDATE/DELETE push (real DB application) and pull
+- [x] Frontend `Inventory` page: summary chips (SKUs, low/out stock, stock value), category filter, search,
+      create/edit modal, stock highlighting, sync chips, offline-first writes
+- [x] Dashboard: Truck Parts card live count + low-stock alert; module cards now navigate
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -161,7 +171,7 @@ buja-auto-spa-erp/
 
 After foundation verification:
 - ~~Customers module~~ (completed in Phase 2)
-- Inventory / Truck Parts
+- ~~Inventory / Truck Parts~~ (completed in Phase 3)
 - Sales / Purchases
 - Invoices / Payments
 - Car Wash

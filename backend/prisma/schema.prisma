@@ -231,6 +231,37 @@ model Customer {
   @@index([updatedAt])
 }
 
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String   @unique
+  category      String   @default("GENERAL") // ENGINE, BRAKES, ELECTRICAL, FLUIDS, TYRES, BODY, ACCESSORIES, GENERAL
+  unit          String   @default("PCS")     // PCS | LTR | KG | SET | BOX
+  stockQuantity Int      @default(0)
+  reorderLevel  Int      @default(5)
+  purchasePrice Float    @default(0)
+  sellingPrice  Float    @default(0)
+  supplierName  String?
+  location      String?  // shelf / store location
+  description   String?
+  isActive      Boolean  @default(true)
+
+  // Sync metadata - required for offline-first
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([name])
+  @@index([sku])
+  @@index([category])
+  @@index([stockQuantity])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
 // Placeholder for future business modules - foundation only
 // These will be expanded in next phases but defined now for sync architecture
 

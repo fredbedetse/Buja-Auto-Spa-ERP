@@ -271,6 +271,22 @@ class SyncEngine {
               });
             }
             pulled++;
+          } else if (change.entityType === 'Product') {
+            if (change.operation === 'DELETE') {
+              await localDB.inventory.delete(change.entityId);
+            } else {
+              const existing = await localDB.inventory.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.inventory.put({
+                ...change.data,
+                syncStatus: 'SYNCED',
+                _dirty: false,
+              });
+            }
+            pulled++;
           } else {
             // Future entities
             console.log(`Pull for ${change.entityType} not yet implemented in local DB`);
@@ -459,6 +475,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Customer') {
           await localDB.customers.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Product') {
+          await localDB.inventory.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

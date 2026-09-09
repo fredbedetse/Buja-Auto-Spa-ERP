@@ -46,6 +46,31 @@ export interface Customer {
   syncStatus?: SyncStatus;
 }
 
+export type ProductCategory = 'ENGINE' | 'BRAKES' | 'ELECTRICAL' | 'FLUIDS' | 'TYRES' | 'BODY' | 'ACCESSORIES' | 'GENERAL';
+export type ProductUnit = 'PCS' | 'LTR' | 'KG' | 'SET' | 'BOX';
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category: ProductCategory;
+  unit: ProductUnit;
+  stockQuantity: number;
+  reorderLevel: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  supplierName?: string | null;
+  location?: string | null;
+  description?: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  lastSyncedAt?: string | null;
+  isDeleted?: boolean;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;

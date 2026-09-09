@@ -8,6 +8,7 @@ import prisma from './lib/prisma';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import customersRoutes from './routes/customers';
+import inventoryRoutes from './routes/inventory';
 import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
 
@@ -45,6 +46,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customersRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Root endpoint
@@ -60,6 +62,7 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       customers: '/api/customers',
+      inventory: '/api/inventory',
       sync: '/api/sync',
     },
     features: {
@@ -77,7 +80,7 @@ app.use((req, res) => {
     error: 'Endpoint not found',
     path: req.path,
     method: req.method,
-    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/sync'],
+    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sync'],
   });
 });
 

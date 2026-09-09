@@ -328,6 +328,34 @@ async function seed() {
     console.log(`ℹ️ Customers already present (${existingCustomers}), skipping`);
   }
 
+  // Seed demo inventory (Truck Parts) - only when table is empty
+  const existingProducts = await prisma.product.count({ where: { isDeleted: false } });
+  if (existingProducts === 0) {
+    const products = [
+      { name: 'Brake Pads Set - Toyota Dyna', sku: 'BRK-4501', category: 'BRAKES', unit: 'SET', stockQuantity: 14, reorderLevel: 5, purchasePrice: 45000, sellingPrice: 75000, supplierName: 'Toshiba Auto Parts Dar', location: 'Shelf A1' },
+      { name: 'Oil Filter - Hino 500', sku: 'ENG-2210', category: 'ENGINE', unit: 'PCS', stockQuantity: 30, reorderLevel: 10, purchasePrice: 8000, sellingPrice: 13000, supplierName: 'Toshiba Auto Parts Dar', location: 'Shelf A2' },
+      { name: 'Air Filter - Toyota Dyna', sku: 'ENG-2211', category: 'ENGINE', unit: 'PCS', stockQuantity: 3, reorderLevel: 5, purchasePrice: 15000, sellingPrice: 25000, supplierName: 'Mombasa Wholesale', location: 'Shelf A2' },
+      { name: 'Alternator Belt B-52', sku: 'ENG-3320', category: 'ENGINE', unit: 'PCS', stockQuantity: 22, reorderLevel: 8, purchasePrice: 12000, sellingPrice: 20000, location: 'Shelf B1' },
+      { name: 'Tyre 10.00 R20 Tubeless', sku: 'TYR-1020', category: 'TYRES', unit: 'PCS', stockQuantity: 6, reorderLevel: 4, purchasePrice: 350000, sellingPrice: 500000, supplierName: 'Mombasa Wholesale', location: 'Store Yard' },
+      { name: 'Engine Oil 15W-40 (20L Drum)', sku: 'FLD-9001', category: 'FLUIDS', unit: 'BOX', stockQuantity: 18, reorderLevel: 6, purchasePrice: 120000, sellingPrice: 165000, location: 'Shelf C1' },
+      { name: 'Coolant Concentrate 5L', sku: 'FLD-9002', category: 'FLUIDS', unit: 'PCS', stockQuantity: 0, reorderLevel: 6, purchasePrice: 25000, sellingPrice: 40000, location: 'Shelf C1' },
+      { name: 'Wiper Blades Pair 600mm', sku: 'ACC-5510', category: 'ACCESSORIES', unit: 'SET', stockQuantity: 11, reorderLevel: 4, purchasePrice: 9000, sellingPrice: 15000, location: 'Counter' },
+      { name: 'Headlight Bulb H4 24V', sku: 'ELC-7702', category: 'ELECTRICAL', unit: 'PCS', stockQuantity: 2, reorderLevel: 10, purchasePrice: 3000, sellingPrice: 6000, location: 'Shelf B2' },
+      { name: 'Shock Absorber Front - Dyna', sku: 'BODY-8811', category: 'BODY', unit: 'PCS', stockQuantity: 9, reorderLevel: 4, purchasePrice: 85000, sellingPrice: 130000, supplierName: 'Mombasa Wholesale', location: 'Shelf D1' },
+      { name: 'Car Wash Shampoo 30L', sku: 'WAS-0001', category: 'GENERAL', unit: 'LTR', stockQuantity: 45, reorderLevel: 20, purchasePrice: 30000, sellingPrice: 3000, description: 'Bulk dispense for wash bays - selling price per litre', location: 'Wash Bay Store' },
+    ];
+    for (const prod of products) {
+      await prisma.product.upsert({
+        where: { sku: prod.sku },
+        update: {},
+        create: prod,
+      });
+    }
+    console.log(`✅ Seeded ${products.length} demo products (truck parts & consumables)`);
+  } else {
+    console.log(`ℹ️ Products already present (${existingProducts}), skipping`);
+  }
+
   console.log('🎉 Seed completed successfully!');
 }
 

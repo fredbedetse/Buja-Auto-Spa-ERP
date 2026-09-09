@@ -399,6 +399,76 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Product') {
+          // Inventory module: apply real data with optimistic locking
+          const existing = await prisma.product.findUnique({ where: { id: entityId } });
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Entity already exists', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({
+                data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Entity already exists', conflictData: JSON.stringify({ clientData: data, serverData: existing }) }
+              });
+              continue;
+            }
+
+            const { deviceId: _dd, id: _id, ...pdata } = data || {};
+
+            if (existing && existing.isDeleted) {
+              await prisma.product.update({ where: { id: entityId }, data: { ...pdata, isDeleted: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            } else {
+              await prisma.product.create({
+                data: {
+                  id: entityId,
+                  name: pdata.name,
+                  sku: pdata.sku || `OFS-${Date.now()}`,
+                  category: pdata.category ?? 'GENERAL',
+                  unit: pdata.unit ?? 'PCS',
+                  stockQuantity: pdata.stockQuantity ?? 0,
+                  reorderLevel: pdata.reorderLevel ?? 5,
+                  purchasePrice: pdata.purchasePrice ?? 0,
+                  sellingPrice: pdata.sellingPrice ?? 0,
+                  supplierName: pdata.supplierName ?? null,
+                  location: pdata.location ?? null,
+                  description: pdata.description ?? null,
+                  isActive: pdata.isActive ?? true,
+                  lastSyncedAt: new Date(),
+                  deviceId,
+                }
+              });
+            }
+
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: 1 });
+
+          } else if (operation === 'UPDATE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Entity not found' });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'FAILED', version: 0, clientVersion, errorMessage: 'Entity not found', payload: JSON.stringify(data) } });
+              continue;
+            }
+
+            if (clientVersion !== undefined && clientVersion !== existing.version) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, clientVersion, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, serverVersion: existing.version, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+
+            const { deviceId: _dd2, id: _id2, version: _v2, ...pupdate } = data || {};
+            const updated = await prisma.product.update({ where: { id: entityId }, data: { ...pupdate, isDeleted: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, serverVersion: existing.version, payload: JSON.stringify(data), syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+
+          } else if (operation === 'DELETE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already deleted' });
+              continue;
+            }
+            await prisma.product.update({ where: { id: entityId }, data: { isDeleted: true, isActive: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else {
           // For other entity types (future modules), generic handling
           // Log as synced for now - actual entity handling will be implemented per module
@@ -529,6 +599,26 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         },
         version: u.version,
         timestamp: u.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Product')) {
+      const products = await prisma.product.findMany({
+        where: {
+          updatedAt: { gt: lastSyncDate },
+          isDeleted: false,
+        },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+
+      changes.push(...products.map(pr => ({
+        entityType: 'Product',
+        entityId: pr.id,
+        operation: 'UPDATE',
+        data: pr,
+        version: pr.version,
+        timestamp: pr.updatedAt.toISOString(),
       })));
     }
 

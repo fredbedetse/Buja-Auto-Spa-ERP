@@ -10,10 +10,13 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import localDB from '../lib/db';
 import apiClient from '../lib/api';
+import { Link } from 'react-router-dom';
 
 interface SystemStats {
   users: number;
   customers: number;
+  products: number;
+  lowStock: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -28,6 +31,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<SystemStats>({
     users: 0,
     customers: 0,
+    products: 0,
+    lowStock: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -64,11 +69,26 @@ export default function Dashboard() {
           serverConnected = false;
         }
 
+        let serverProducts: number | null = null;
+        let serverLowStock: number | null = null;
+        try {
+          const istats = await apiClient.get<any>('/inventory/stats');
+          serverProducts = istats.total ?? null;
+          serverLowStock = (istats.lowStock ?? 0) + (istats.outOfStock ?? 0);
+        } catch {
+          serverProducts = null;
+          serverLowStock = null;
+        }
+
         const localCustomersCount = await localDB.customers.count();
+        const localProducts = await localDB.inventory.toArray();
+        const localLow = localProducts.filter(pr => pr.stockQuantity <= pr.reorderLevel).length;
 
         setStats({
           users: serverUsers,
           customers: serverCustomers ?? localCustomersCount,
+          products: serverProducts ?? localProducts.length,
+          lowStock: serverLowStock ?? localLow,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -85,13 +105,13 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [syncStatus.pending, syncStatus.failed]);
 
-  const modules = [
-    { name: 'Truck Parts', icon: Package, color: 'from-orange-500 to-red-500', count: 'Soon', desc: 'Inventory & Sales' },
-    { name: 'Maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'Vehicle Service' },
-    { name: 'Car Wash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'Wash Services' },
-    { name: 'EV Rentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'Electric Fleet' },
-    { name: 'Truck Rentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'Heavy Rentals' },
-    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management' },
+  const modules: Array<{ name: string; icon: any; color: string; count: string; sub?: string; desc: string; href: string; implemented?: boolean }> = [
+    { name: 'Truck Parts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? `${stats.lowStock} low stock` : undefined, desc: 'Inventory & Sales', href: '/inventory', implemented: true },
+    { name: 'Maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'Vehicle Service', href: '/maintenance' },
+    { name: 'Car Wash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'Wash Services', href: '/carwash' },
+    { name: 'EV Rentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'Electric Fleet', href: '/ev-rentals' },
+    { name: 'Truck Rentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'Heavy Rentals', href: '/truck-rentals' },
+    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management', href: '/customers', implemented: true },
   ];
 
   return (
@@ -265,7 +285,7 @@ export default function Dashboard() {
         
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {modules.map((mod) => (
-            <div key={mod.name} className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-lg hover:border-gray-300 transition-all group">
+            <Link key={mod.name} to={mod.href} className={`bg-white rounded-2xl border p-5 transition-all group block text-left ${mod.implemented ? 'border-gray-200 hover:shadow-lg hover:border-gray-300' : 'border-gray-100 opacity-80'}`}>
               <div className="flex items-start justify-between mb-3">
                 <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${mod.color} flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform`}>
                   <mod.icon className="w-5 h-5" />
@@ -274,11 +294,14 @@ export default function Dashboard() {
               </div>
               <h3 className="font-semibold text-gray-900">{mod.name}</h3>
               <p className="text-sm text-gray-500 mt-1">{mod.desc}</p>
-              <div className="mt-3 flex items-center gap-1 text-xs text-gray-400">
-                <TrendingUp className="w-3 h-3" />
-                Ready for implementation
+              <div className={`mt-3 flex items-center justify-between text-xs ${mod.implemented ? 'text-[#C1272D] font-medium' : 'text-gray-400'}`}>
+                <span className="flex items-center gap-1">
+                  {mod.sub ? <AlertTriangle className="w-3 h-3 text-orange-500" /> : <TrendingUp className="w-3 h-3" />}
+                  {mod.sub || (mod.implemented ? 'Open module' : 'Ready for implementation')}
+                </span>
+                {mod.implemented && <span>→</span>}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
@@ -299,6 +322,8 @@ export default function Dashboard() {
               { task: 'Online/Offline Detection', done: true },
               { task: 'User Roles & Permissions (RBAC)', done: true },
               { task: 'ERP Shell & Dashboard', done: true },
+              { task: 'Customers Module (Phase 2)', done: true },
+              { task: 'Inventory / Truck Parts Module (Phase 3)', done: true },
             ].map((item) => (
               <div key={item.task} className="flex items-center gap-2">
                 <CheckCircle className={`w-4 h-4 ${item.done ? 'text-green-500' : 'text-gray-300'}`} />

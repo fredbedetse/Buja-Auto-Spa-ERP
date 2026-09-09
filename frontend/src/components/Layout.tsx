@@ -37,7 +37,7 @@ const navigation = [
   { name: 'Suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read', badge: 'Soon' },
   { name: 'Vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read', badge: 'Soon' },
   { name: 'Employees', href: '/employees', icon: UserCog, module: 'users:read', badge: 'Soon' },
-  { name: 'Truck Parts', href: '/inventory', icon: Package, module: 'inventory:read', badge: 'Soon' },
+  { name: 'Truck Parts', href: '/inventory', icon: Package, module: 'inventory:read' },
   { name: 'Purchases', href: '/purchases', icon: ShoppingCart, module: 'purchases:read', badge: 'Soon' },
   { name: 'Sales', href: '/sales', icon: ShoppingCart, module: 'sales:read', badge: 'Soon' },
   { name: 'Invoices', href: '/invoices', icon: FileText, module: 'invoices:read', badge: 'Soon' },
