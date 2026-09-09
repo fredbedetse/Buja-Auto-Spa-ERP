@@ -15,9 +15,9 @@ import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, authChecked } = useAuthStore();
 
-  if (isLoading) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <div className="text-center">
@@ -36,9 +36,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, authChecked } = useAuthStore();
 
-  if (isLoading) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <div className="w-10 h-10 border-3 border-gray-200 border-t-[#FF6B00] rounded-full animate-spin" />

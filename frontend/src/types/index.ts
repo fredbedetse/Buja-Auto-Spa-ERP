@@ -216,6 +216,7 @@ export interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authChecked: boolean;
 }
 
 export interface SyncQueueItem {

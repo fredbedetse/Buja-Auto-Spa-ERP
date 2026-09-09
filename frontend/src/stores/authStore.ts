@@ -20,6 +20,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshToken: localStorage.getItem('buja_refresh_token'),
   isAuthenticated: !!localStorage.getItem('buja_access_token'),
   isLoading: true,
+  authChecked: false,
 
   login: async (identifier: string, password: string) => {
     set({ isLoading: true });
@@ -76,11 +77,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       if (cachedUser) {
         try {
           const user = JSON.parse(cachedUser);
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({ user, isAuthenticated: true, isLoading: false, authChecked: true });
           return;
         } catch {}
       }
-      set({ isLoading: false, isAuthenticated: false, user: null });
+      set({ isLoading: false, isAuthenticated: false, user: null, authChecked: true });
       return;
     }
 
@@ -100,7 +101,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         accessToken: token,
         refreshToken: localStorage.getItem('buja_refresh_token'),
         isAuthenticated: true,
-        isLoading: false,
+        isLoading: false, authChecked: true,
       });
     } catch (error: any) {
       console.warn('Auth check failed, trying offline cache:', error.message);
@@ -114,7 +115,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           set({
             user: localUser || user,
             isAuthenticated: true,
-            isLoading: false,
+            isLoading: false, authChecked: true,
           });
           return;
         } catch {}
@@ -138,7 +139,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         } catch {}
       }
 
-      set({ isLoading: false, isAuthenticated: false, user: null });
+      set({ isLoading: false, authChecked: true, isAuthenticated: false, user: null });
     }
   },
 
