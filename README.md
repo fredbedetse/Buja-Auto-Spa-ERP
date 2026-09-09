@@ -54,6 +54,18 @@ This ERP is designed to **continue operating when internet is unavailable** and 
 - [x] User roles & permissions (RBAC)
 - [x] ERP shell/dashboard (sidebar, search, notifications, profile, indicators)
 
+## ✅ Phase 2 Implemented - Customers Module
+
+- [x] `Customer` model in Prisma (sync-safe: version, soft delete, deviceId) + migration
+- [x] CRUD API `/api/customers` with search, pagination, stats, RBAC guards
+- [x] Optimistic locking (409 `VERSION_CONFLICT` with `serverData`)
+- [x] Offline-first sync: `/api/sync/push` now applies Customer CREATE/UPDATE/DELETE, `/api/sync/pull` streams Customer changes
+- [x] Client-generated UUIDs supported end-to-end (offline creates reconcile without id drift)
+- [x] Frontend `Customers` page: table, search, create/edit modal, delete, per-row sync badges, local-first cache with cloud refresh
+- [x] Sync engine applies Customer changes on pull and on conflict resolution (SERVER_WINS)
+- [x] Dashboard shows live customer counts (cloud when online, IndexedDB when offline)
+- [x] Seed data: 6 demo customers (idempotent)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -148,7 +160,7 @@ buja-auto-spa-erp/
 ## 🔜 Next Phases
 
 After foundation verification:
-- Customers module
+- ~~Customers module~~ (completed in Phase 2)
 - Inventory / Truck Parts
 - Sales / Purchases
 - Invoices / Payments

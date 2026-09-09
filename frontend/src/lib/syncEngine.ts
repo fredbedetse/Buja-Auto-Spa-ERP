@@ -255,6 +255,22 @@ class SyncEngine {
               });
             }
             pulled++;
+          } else if (change.entityType === 'Customer') {
+            if (change.operation === 'DELETE') {
+              await localDB.customers.delete(change.entityId);
+            } else {
+              const existing = await localDB.customers.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.customers.put({
+                ...change.data,
+                syncStatus: 'SYNCED',
+                _dirty: false,
+              });
+            }
+            pulled++;
           } else {
             // Future entities
             console.log(`Pull for ${change.entityType} not yet implemented in local DB`);
@@ -440,6 +456,12 @@ class SyncEngine {
           await localDB.users.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
+          });
+        } else if (item.entityType === 'Customer') {
+          await localDB.customers.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
           });
         }
       }

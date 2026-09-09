@@ -1,7 +1,7 @@
 // Offline-first local database using Dexie (IndexedDB)
 // This is the primary offline storage, NOT localStorage
 import Dexie, { type Table } from 'dexie';
-import type { User, SyncQueueItem, SyncMetadata } from '../types';
+import type { User, Customer, SyncQueueItem, SyncMetadata } from '../types';
 
 export interface LocalUser extends User {
   _localId?: string;
@@ -9,6 +9,10 @@ export interface LocalUser extends User {
 }
 
 export interface LocalSyncQueueItem extends SyncQueueItem {}
+
+export interface LocalCustomer extends Customer {
+  _dirty?: boolean;
+}
 
 export interface LocalSyncMetadata extends SyncMetadata {
   id?: string;
@@ -33,7 +37,7 @@ class BujaLocalDB extends Dexie {
   auditLogs!: Table<LocalAuditLog, string>;
   
   // Future tables for business modules (foundation only)
-  customers!: Table<any, string>;
+  customers!: Table<LocalCustomer, string>;
   vehicles!: Table<any, string>;
   inventory!: Table<any, string>;
 

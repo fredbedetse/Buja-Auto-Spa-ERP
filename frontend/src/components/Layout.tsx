@@ -33,7 +33,7 @@ import { useSyncStatus } from '../hooks/useSyncStatus';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard:read', exact: true },
-  { name: 'Customers', href: '/customers', icon: Users, module: 'customers:read', badge: 'Soon' },
+  { name: 'Customers', href: '/customers', icon: Users, module: 'customers:read' },
   { name: 'Suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read', badge: 'Soon' },
   { name: 'Vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read', badge: 'Soon' },
   { name: 'Employees', href: '/employees', icon: UserCog, module: 'users:read', badge: 'Soon' },

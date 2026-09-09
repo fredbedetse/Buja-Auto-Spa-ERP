@@ -198,6 +198,39 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// Business Modules - Phase 2: Customers
+// Full offline-first sync metadata mirrors the User model
+
+model Customer {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?
+  phone         String   @unique
+  altPhone      String?
+  email         String?
+  customerType  String   @default("INDIVIDUAL") // INDIVIDUAL | COMPANY
+  address       String?
+  city          String?
+  notes         String?
+  creditLimit   Float    @default(0)
+  isActive      Boolean  @default(true)
+
+  // Sync metadata - required for offline-first
+  version       Int      @default(1) // Optimistic locking version
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?  // Last device that modified
+  isDeleted     Boolean  @default(false) // Soft delete for sync
+
+  @@index([name])
+  @@index([phone])
+  @@index([email])
+  @@index([customerType])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
 // Placeholder for future business modules - foundation only
 // These will be expanded in next phases but defined now for sync architecture
 

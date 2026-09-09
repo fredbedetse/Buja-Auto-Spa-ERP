@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import UsersPage from './pages/Users';
+import CustomersPage from './pages/Customers';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
 
@@ -66,7 +67,7 @@ export default function App() {
           <Route path="sync-status" element={<SyncStatusPage />} />
           
           {/* Business modules - foundation only, show not implemented */}
-          <Route path="customers" element={<NotImplemented />} />
+          <Route path="customers" element={<CustomersPage />} />
           <Route path="suppliers" element={<NotImplemented />} />
           <Route path="vehicles" element={<NotImplemented />} />
           <Route path="employees" element={<NotImplemented />} />

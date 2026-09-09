@@ -13,6 +13,7 @@ import apiClient from '../lib/api';
 
 interface SystemStats {
   users: number;
+  customers: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const syncStatus = useSyncStatus();
   const [stats, setStats] = useState<SystemStats>({
     users: 0,
+    customers: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -46,17 +48,27 @@ export default function Dashboard() {
 
         let serverUsers = 0;
         let serverConnected = false;
+        let serverCustomers: number | null = null;
         try {
           const health = await apiClient.syncHealth() as any;
           serverUsers = health.stats?.users || 0;
           serverConnected = true;
           setServerInfo(health);
+          try {
+            const cstats = await apiClient.get<any>('/customers/stats');
+            serverCustomers = cstats.total ?? null;
+          } catch {
+            serverCustomers = null;
+          }
         } catch {
           serverConnected = false;
         }
 
+        const localCustomersCount = await localDB.customers.count();
+
         setStats({
           users: serverUsers,
+          customers: serverCustomers ?? localCustomersCount,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -79,7 +91,7 @@ export default function Dashboard() {
     { name: 'Car Wash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'Wash Services' },
     { name: 'EV Rentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'Electric Fleet' },
     { name: 'Truck Rentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'Heavy Rentals' },
-    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: 'Soon', desc: 'Client Management' },
+    { name: 'Customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'Client Management' },
   ];
 
   return (

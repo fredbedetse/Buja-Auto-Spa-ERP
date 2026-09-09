@@ -305,6 +305,29 @@ async function seed() {
     }
   }
 
+  // Seed demo customers (Phase 2) - only when table is empty
+  const existingCustomers = await prisma.customer.count({ where: { isDeleted: false } });
+  if (existingCustomers === 0) {
+    const customers = [
+      { name: 'Ngabo Transports SARL', contactName: 'Eric Ngabo', phone: '+25779111222', email: 'contact@ngabotransports.bi', customerType: 'COMPANY', city: 'Bujumbura', address: 'Zone Bujumbura Rural, Rohero', notes: 'Fleet of 6 trucks - monthly car wash contract', creditLimit: 5000000 },
+      { name: 'Hakizimana Jean', phone: '+25779222333', customerType: 'INDIVIDUAL', city: 'Gitega', notes: 'Pickup Toyota Hilux 2018', creditLimit: 0 },
+      { name: 'Niyonsaba Marie', phone: '+25779333444', email: 'niyonsaba.m@gmail.bi', customerType: 'INDIVIDUAL', city: 'Bujumbura', address: 'Kibenga', creditLimit: 0 },
+      { name: 'Société BUJA Logistics', contactName: 'Patrick Ndikumana', phone: '+25779444555', customerType: 'COMPANY', city: 'Bujumbura', notes: 'Truck rental + EV charging account', creditLimit: 12000000 },
+      { name: 'Bigirimana Emmanuel', phone: '+25779555666', altPhone: '+25768555666', customerType: 'INDIVIDUAL', city: 'Muyinga', notes: 'Regular interior detailing', creditLimit: 0 },
+      { name: 'Coopérative Kayanza Farm', contactName: 'Alice Uwase', phone: '+25779666777', email: 'kayanzafarm@coop.bi', customerType: 'COMPANY', city: 'Kayanza', notes: 'Machine wash - 4 trucks weekly', creditLimit: 2500000 },
+    ];
+    for (const c of customers) {
+      await prisma.customer.upsert({
+        where: { phone: c.phone },
+        update: {},
+        create: c,
+      });
+    }
+    console.log(`✅ Seeded ${customers.length} demo customers`);
+  } else {
+    console.log(`ℹ️ Customers already present (${existingCustomers}), skipping`);
+  }
+
   console.log('🎉 Seed completed successfully!');
 }
 

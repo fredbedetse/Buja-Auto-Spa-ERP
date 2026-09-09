@@ -201,6 +201,204 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Customer') {
+          // Customer module: real data application with optimistic locking
+          const existing = await prisma.customer.findUnique({ where: { id: entityId } });
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({
+                entityType,
+                entityId,
+                status: 'CONFLICT',
+                error: 'Entity already exists',
+                serverVersion: existing.version,
+                serverData: existing,
+              });
+
+              await prisma.syncLog.create({
+                data: {
+                  userId,
+                  deviceId,
+                  entityType,
+                  entityId,
+                  operation: 'CREATE',
+                  status: 'CONFLICT',
+                  version: existing.version,
+                  clientVersion,
+                  errorMessage: 'Entity already exists',
+                  conflictData: JSON.stringify({ clientData: data, serverData: existing }),
+                }
+              });
+              continue;
+            }
+
+            const { deviceId: _dd, id: _id, ...cdata } = data || {};
+
+            if (existing && existing.isDeleted) {
+              // Replay of a previously deleted record - revive with client data
+              await prisma.customer.update({
+                where: { id: entityId },
+                data: {
+                  ...cdata,
+                  isDeleted: false,
+                  version: { increment: 1 },
+                  lastSyncedAt: new Date(),
+                  deviceId,
+                }
+              });
+            } else {
+              await prisma.customer.create({
+                data: {
+                  id: entityId,
+                  name: cdata.name,
+                  contactName: cdata.contactName ?? null,
+                  phone: cdata.phone,
+                  altPhone: cdata.altPhone ?? null,
+                  email: cdata.email ?? null,
+                  customerType: cdata.customerType ?? 'INDIVIDUAL',
+                  address: cdata.address ?? null,
+                  city: cdata.city ?? null,
+                  notes: cdata.notes ?? null,
+                  creditLimit: cdata.creditLimit ?? 0,
+                  isActive: cdata.isActive ?? true,
+                  lastSyncedAt: new Date(),
+                  deviceId,
+                }
+              });
+            }
+
+            await prisma.syncLog.create({
+              data: {
+                userId,
+                deviceId,
+                entityType,
+                entityId,
+                operation: 'CREATE',
+                status: 'SYNCED',
+                version: 1,
+                clientVersion,
+                payload: JSON.stringify(data),
+                syncedAt: new Date(),
+              }
+            });
+
+            results.push({ entityType, entityId, status: 'SYNCED', version: 1 });
+
+          } else if (operation === 'UPDATE') {
+            if (!existing) {
+              results.push({
+                entityType,
+                entityId,
+                status: 'FAILED',
+                error: 'Entity not found',
+              });
+              await prisma.syncLog.create({
+                data: {
+                  userId,
+                  deviceId,
+                  entityType,
+                  entityId,
+                  operation: 'UPDATE',
+                  status: 'FAILED',
+                  version: 0,
+                  clientVersion,
+                  errorMessage: 'Entity not found',
+                  payload: JSON.stringify(data),
+                }
+              });
+              continue;
+            }
+
+            // Conflict detection: if clientVersion != server version
+            if (clientVersion !== undefined && clientVersion !== existing.version) {
+              results.push({
+                entityType,
+                entityId,
+                status: 'CONFLICT',
+                error: 'Version conflict',
+                serverVersion: existing.version,
+                clientVersion,
+                serverData: existing,
+              });
+
+              await prisma.syncLog.create({
+                data: {
+                  userId,
+                  deviceId,
+                  entityType,
+                  entityId,
+                  operation: 'UPDATE',
+                  status: 'CONFLICT',
+                  version: existing.version,
+                  clientVersion,
+                  serverVersion: existing.version,
+                  errorMessage: 'Version conflict',
+                  conflictData: JSON.stringify({ clientData: data, serverData: existing }),
+                }
+              });
+              continue;
+            }
+
+            // No conflict - apply the update to the customer table
+            const { deviceId: _dd, id: _id, version: _v, ...cupdate } = data || {};
+            const updated = await prisma.customer.update({
+              where: { id: entityId },
+              data: {
+                ...cupdate,
+                isDeleted: false,
+                version: { increment: 1 },
+                lastSyncedAt: new Date(),
+                deviceId,
+              }
+            });
+
+            await prisma.syncLog.create({
+              data: {
+                userId,
+                deviceId,
+                entityType,
+                entityId,
+                operation: 'UPDATE',
+                status: 'SYNCED',
+                version: updated.version,
+                clientVersion,
+                serverVersion: existing.version,
+                payload: JSON.stringify(data),
+                syncedAt: new Date(),
+              }
+            });
+
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+
+          } else if (operation === 'DELETE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already deleted' });
+              continue;
+            }
+
+            await prisma.customer.update({
+              where: { id: entityId },
+              data: { isDeleted: true, isActive: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId }
+            });
+
+            await prisma.syncLog.create({
+              data: {
+                userId,
+                deviceId,
+                entityType,
+                entityId,
+                operation: 'DELETE',
+                status: 'SYNCED',
+                version: (existing.version || 1) + 1,
+                clientVersion,
+                syncedAt: new Date(),
+              }
+            });
+
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else {
           // For other entity types (future modules), generic handling
           // Log as synced for now - actual entity handling will be implemented per module
@@ -331,6 +529,26 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         },
         version: u.version,
         timestamp: u.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Customer')) {
+      const customers = await prisma.customer.findMany({
+        where: {
+          updatedAt: { gt: lastSyncDate },
+          isDeleted: false,
+        },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+
+      changes.push(...customers.map(c => ({
+        entityType: 'Customer',
+        entityId: c.id,
+        operation: 'UPDATE',
+        data: c,
+        version: c.version,
+        timestamp: c.updatedAt.toISOString(),
       })));
     }
 

@@ -23,6 +23,29 @@ export interface User {
   syncStatus?: SyncStatus;
 }
 
+export type CustomerType = 'INDIVIDUAL' | 'COMPANY';
+
+export interface Customer {
+  id: string;
+  name: string;
+  contactName?: string | null;
+  phone: string;
+  altPhone?: string | null;
+  email?: string | null;
+  customerType: CustomerType;
+  address?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  creditLimit: number;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  lastSyncedAt?: string | null;
+  isDeleted?: boolean;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;
