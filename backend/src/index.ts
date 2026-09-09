@@ -2,6 +2,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
+import { ENV, productionConfigIssues } from './config/env';
+import { log } from './lib/log';
 import cors from 'cors';
 import prisma from './lib/prisma';
 
@@ -26,16 +30,31 @@ import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const PORT = ENV.port;
 
-console.log('🚀 Starting Buja Auto Spa ERP Backend...');
-console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-console.log(`🌐 Frontend URL: ${FRONTEND_URL}`);
+if (ENV.trustProxy) app.set('trust proxy', 1); // behind nginx/compose
+
+// Security headers. CSP only in production (Vite dev needs inline/HMR freedom).
+app.use(helmet({
+  contentSecurityPolicy: ENV.isProd ? {
+    useDefaults: true,
+    directives: {
+      'default-src': ["'self'"],
+      'img-src': ["'self'", 'data:', 'blob:'],
+      'style-src': ["'self'", "'unsafe-inline'"],
+      'connect-src': ["'self'", ...(process.env.API_PUBLIC_ORIGIN ? [process.env.API_PUBLIC_ORIGIN] : [])],
+      'frame-ancestors': ["'none'"],
+    },
+  } : false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+log('info', '🚀 Starting Buja Auto Spa ERP Backend...', { env: ENV.node, port: PORT, cors: ENV.corsOrigins });
 
 // Middleware
 app.use(cors({
-  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'],
+  origin: ENV.corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Id', 'X-Client-Version'],
@@ -49,10 +68,31 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    if (ENV.jsonLogs) log('info', 'http', { m: req.method, u: req.originalUrl, s: res.statusCode, ms: duration, ip: req.ip });
+    else console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
   });
   next();
 });
+
+// Rate limiting: login-family is the crown-jewel endpoint, keep it tight in prod.
+const authLimiter = rateLimit({
+  windowMs: ENV.authRateWindowMs,
+  limit: ENV.authRateMax,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip: (req) => req.path === '/me' || req.path === '/logout',
+  message: { error: 'Too many attempts - try again later', code: 'RATE_LIMITED' },
+});
+const globalLimiter = rateLimit({
+  windowMs: ENV.globalRateWindowMs,
+  limit: ENV.globalRateMax,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/health'),
+  message: { error: 'Rate limit reached', code: 'RATE_LIMITED' },
+});
+app.use('/api/auth', authLimiter);
+app.use('/api', globalLimiter);
 
 // Routes
 app.use('/api/health', healthRoutes);
@@ -136,6 +176,13 @@ process.on('SIGTERM', shutdown);
 // Start server
 async function start() {
   try {
+    const issues = productionConfigIssues();
+    if (issues.length) {
+      console.error('\n❌ Refusing to start in production with unsafe configuration:\n');
+      issues.forEach(x => console.error('   • ' + x));
+      console.error('\n   (Development mode ignores these guards. See DEPLOYMENT.md.)\n');
+      process.exit(1);
+    }
     // Test DB connection
     await prisma.$connect();
     console.log('✅ Database connected');
@@ -145,10 +192,14 @@ async function start() {
       console.log(`📚 API Docs: http://localhost:${PORT}/`);
       console.log(`🏥 Health: http://localhost:${PORT}/api/health`);
       console.log('');
-      console.log('🔐 Default credentials:');
-      console.log('   Super Admin: admin@bujaautospa.bi / Admin@123456');
-      console.log('   Manager: manager@bujaautospa.bi / Manager@123');
-      console.log('');
+      if (!ENV.isProd) {
+        console.log('🔐 Default credentials:');
+        console.log('   Super Admin: admin@bujaautospa.bi / Admin@123456');
+        console.log('   Manager: manager@bujaautospa.bi / Manager@123');
+        console.log('');
+      } else {
+        log('warn', 'production mode: demo credentials banner suppressed - rotate all seeded passwords (deploy docs)');
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

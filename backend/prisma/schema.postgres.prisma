@@ -1,0 +1,674 @@
+// Buja Auto Spa ERP - Cloud Database Schema
+// Central source of truth for synchronized business data
+// Provider is SQLite for development, easily swappable to PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums - stored as String for SQLite compatibility (emulated enums)
+// Values: UserStatus: ACTIVE, INACTIVE, SUSPENDED
+// RoleName: SUPER_ADMIN, ADMIN, MANAGER, CASHIER, MECHANIC, WASHER, RENTAL_AGENT, ACCOUNTANT, VIEWER
+// SyncStatus: SYNCED, PENDING, FAILED, CONFLICT
+// SyncOperation: CREATE, UPDATE, DELETE
+
+// Core User & Auth Models
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  username      String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatarUrl     String?
+  status        String   @default("ACTIVE")
+  
+  // Sync metadata - required for offline-first
+  version       Int      @default(1) // Optimistic locking version
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?  // Last device that modified
+  isDeleted     Boolean  @default(false) // Soft delete for sync
+  
+  // Relations
+  roles         UserRole[]
+  sessions      Session[]
+  syncLogs      SyncLog[]
+  auditLogs     AuditLog[]
+  
+  @@index([email])
+  @@index([username])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String
+  description String?
+  isSystem    Boolean  @default(false)
+  
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+  
+  permissions RolePermission[]
+  users       UserRole[]
+  
+  @@index([name])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g. "customers:read", "sales:create"
+  module      String   // e.g. "customers", "sales", "settings"
+  action      String   // read, create, update, delete, manage
+  description String?
+  
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  roles       RolePermission[]
+  
+  @@index([module])
+  @@index([key])
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  assignedAt DateTime @default(now())
+  assignedBy String?  // userId who assigned
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+  
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  deviceId     String?
+  deviceInfo   String?  // JSON stringified
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  isRevoked    Boolean  @default(false)
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+}
+
+// Synchronization & Offline-First Infrastructure
+model SyncLog {
+  id            String        @id @default(uuid())
+  userId        String?
+  deviceId      String
+  entityType    String        // e.g. "User", "Customer", "Vehicle"
+  entityId      String
+  operation     String
+  status        String        @default("PENDING")
+  version       Int           // Entity version at sync time
+  clientVersion Int?          // Version sent by client
+  serverVersion Int?          // Current server version
+  payload       String?       // JSON payload for debugging
+  errorMessage  String?
+  conflictData  String?       // JSON for conflict resolution
+  retryCount    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  syncedAt      DateTime?
+  
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([deviceId])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model SyncMetadata {
+  id            String   @id @default(uuid())
+  deviceId      String   @unique
+  userId        String?
+  lastPullAt    DateTime?
+  lastPushAt    DateTime?
+  lastSyncAt    DateTime?
+  clientVersion String?  // App version
+  pendingCount  Int      @default(0)
+  failedCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([deviceId])
+}
+
+// Audit trail
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // e.g. "user.login", "customer.create"
+  entityType  String?
+  entityId    String?
+  oldData     String?  // JSON
+  newData     String?  // JSON
+  ipAddress   String?
+  deviceId    String?
+  createdAt   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Business Modules - Phase 2: Customers
+// Full offline-first sync metadata mirrors the User model
+
+model Customer {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?
+  phone         String   @unique
+  altPhone      String?
+  email         String?
+  customerType  String   @default("INDIVIDUAL") // INDIVIDUAL | COMPANY
+  address       String?
+  city          String?
+  notes         String?
+  creditLimit   Float    @default(0)
+  isActive      Boolean  @default(true)
+
+  // Sync metadata - required for offline-first
+  version       Int      @default(1) // Optimistic locking version
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?  // Last device that modified
+  isDeleted     Boolean  @default(false) // Soft delete for sync
+
+  @@index([name])
+  @@index([phone])
+  @@index([email])
+  @@index([customerType])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String   @unique
+  category      String   @default("GENERAL") // ENGINE, BRAKES, ELECTRICAL, FLUIDS, TYRES, BODY, ACCESSORIES, GENERAL
+  unit          String   @default("PCS")     // PCS | LTR | KG | SET | BOX
+  stockQuantity Int      @default(0)
+  reorderLevel  Int      @default(5)
+  purchasePrice Float    @default(0)
+  sellingPrice  Float    @default(0)
+  supplierName  String?
+  location      String?  // shelf / store location
+  description   String?
+  isActive      Boolean  @default(true)
+
+  // Sync metadata - required for offline-first
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([name])
+  @@index([sku])
+  @@index([category])
+  @@index([stockQuantity])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
+
+// Phase 4: Sales / POS - documents with line items; stock is adjusted transactionally server-side
+model Sale {
+  id            String   @id @default(uuid())
+  invoiceNo     String   @unique // INV-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  customerId    String
+  customerName  String   // denormalized for offline display
+  saleDate      DateTime @default(now())
+  status        String   @default("COMPLETED") // DRAFT | COMPLETED | CANCELLED
+  paymentMethod String   @default("CASH")       // CASH | CARD | MOBILE_MONEY | LOAN
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  taxAmount     Float    @default(0)
+  total         Float    @default(0)
+  paidAmount    Float    @default(0)
+  balance       Float    @default(0)
+  notes         String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  items         SaleItem[]
+
+  @@index([customerId])
+  @@index([saleDate])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model SaleItem {
+  id          String  @id @default(uuid())
+  saleId      String
+  productId   String?
+  productName String
+  sku         String?
+  quantity    Int
+  unitPrice   Float
+  lineTotal   Float
+
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// Placeholder for future business modules - foundation only
+// These will be expanded in next phases but defined now for sync architecture
+
+model SyncCheckpoint {
+  id          String   @id @default(uuid())
+  entityType  String   @unique // e.g. "customers", "vehicles"
+  lastVersion Int      @default(0)
+  lastId      String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== Phase 5: Suppliers & Purchases =====
+
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?
+  phone         String   @unique
+  altPhone      String?
+  email         String?
+  address       String?
+  city          String?
+  taxId         String?
+  notes         String?
+  leadTimeDays  Int      @default(7)
+  isActive      Boolean  @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([name])
+  @@index([phone])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  poNumber      String   @unique // PO-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  supplierId    String
+  supplierName  String   // denormalized for offline display
+  orderDate     DateTime @default(now())
+  expectedDate  DateTime?
+  status        String   @default("RECEIVED") // DRAFT | RECEIVED | CANCELLED
+  paymentMethod String   @default("CASH")     // CASH | CARD | MOBILE_MONEY | LOAN | CREDIT_30
+  invoiceRef    String?  // supplier's own invoice number for the goods
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  taxAmount     Float    @default(0)
+  total         Float    @default(0)
+  paidAmount    Float    @default(0)
+  balance       Float    @default(0)
+  notes         String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  items         PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([orderDate])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  productId   String?
+  productName String
+  sku         String?
+  quantity    Int
+  unitPrice   Float
+  lineTotal   Float
+
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model Vehicle {
+  id            String    @id @default(uuid())
+  plateNumber   String    @unique
+  type          String    @default("TRUCK") // TRUCK | BUS | MINIBUS | PICKUP | CAR | OTHER
+  make          String
+  model         String?
+  year          Int?
+  vin           String?
+  color         String?
+  status        String    @default("AVAILABLE") // AVAILABLE | IN_USE | IN_MAINTENANCE | RENTED | RETIRED
+  odometerKm    Int       @default(0)
+  driverName    String?
+  driverPhone   String?
+  purchaseDate  DateTime?
+  purchasePrice Float?    // canonical BIF
+  notes         String?
+  isActive      Boolean   @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([status])
+  @@index([type])
+  @@index([make])
+  @@index([updatedAt])
+}
+
+model Employee {
+  id               String   @id @default(uuid())
+  firstName        String
+  lastName         String
+  position         String   @default("OTHER") // DRIVER | MECHANIC | CASHIER | WASHER | SALESPERSON | ACCOUNTANT | MANAGER | ADMIN | OTHER
+  phone            String?
+  email            String?
+  nationalId       String?
+  address          String?
+  city             String?
+  hireDate         DateTime
+  salary           Float    @default(0) // canonical BIF per month
+  employmentStatus String   @default("ACTIVE") // ACTIVE | ON_LEAVE | TERMINATED
+  notes            String?
+  isActive         Boolean  @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([employmentStatus])
+  @@index([position])
+  @@index([lastName])
+  @@index([updatedAt])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  paymentNo     String   @unique // RCPT-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  saleId        String
+  saleInvoiceNo String?
+  customerName  String?
+  amount        Float
+  paymentMethod String   @default("CASH") // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  paymentDate   DateTime
+  reference     String?
+  notes         String?
+  status        String   @default("COMPLETED") // COMPLETED | VOID
+  voidReason    String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([saleId])
+  @@index([paymentDate])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model RentalUnit {
+  id         String   @id @default(uuid())
+  name       String
+  fleetClass String // EV | TRUCK
+  unitType   String // CITY_CAR | VAN_EV | TRUCK_EV | TRUCK_3T | TRUCK_8T | TRAILER_HEAD | BUS_CHARTER
+  plate      String?
+  status     String   @default("ACTIVE") // ACTIVE | MAINTENANCE
+  odometerKm Int      @default(0)
+  notes      String?
+
+  version      Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastSyncedAt DateTime?
+  deviceId     String?
+  isDeleted    Boolean   @default(false)
+
+  @@index([fleetClass])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String
+  value     String   // JSON-encoded scalar/short object
+  userId    String   // 'GLOBAL' sentinel for company-wide rows, else user id
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, userId])
+  @@index([userId])
+}
+
+model Expense {
+  id            String    @id @default(uuid())
+  expenseNo     String    @unique // EXP-YYYY-NNNNN, server-assigned (TMP-EXP-xxx while offline)
+  category      String    // FUEL | RENT | UTILITIES | SUPPLIES | INSURANCE | TRANSPORT | MARKETING | MISC
+  amount        Float     // canonical BIF, rounded at write
+  date          DateTime
+  vendor        String?
+  paidBy        String?
+  paymentMethod String    @default("CASH") // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  notes         String?
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean   @default(false)
+
+  @@index([category, date])
+  @@index([updatedAt, isDeleted])
+}
+
+model RentalBooking {
+  id         String  @id @default(uuid())
+  bookingNo  String  @unique // EVR-/TRR-YYYY-NNNNN server-assigned (TMP-RNT-xxx while offline)
+  fleetClass String // EV | TRUCK
+  unitId     String
+  unitName   String // snapshot for offline display
+  unitPlate  String?
+  customerName String
+  customerPhone String?
+
+  startDate DateTime // day-granular rental window
+  endDate   DateTime // last day included
+  status    String   @default("PENDING") // PENDING | ACTIVE | RETURNED | CANCELLED
+  insurance Boolean  @default(false)
+
+  dailyRate     Float @default(0) // catalog snapshot (BIF)
+  days          Int   @default(1)
+  rentAmount    Float @default(0) // after weekly discount
+  discount      Float @default(0) // weekly savings (BIF)
+  insuranceTotal Float @default(0)
+  overtimeFee   Float @default(0) // charged at return
+  totalAmount   Float @default(0) // rent + insurance + overtime
+  paidAmount    Float @default(0) // collected at pickup
+  paymentMethod String?
+
+  depositAmount  Float   @default(0)
+  depositRefunded Boolean @default(false)
+
+  mileageOut     Int?
+  mileageReturn  Int?
+  returnLevel    Int? // % charge (EV) or fuel (truck) at return
+  damageNotes    String?
+  notes          String?
+
+  startedAt  DateTime?
+  returnedAt DateTime?
+
+  version      Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastSyncedAt DateTime?
+  deviceId     String?
+  isDeleted    Boolean   @default(false)
+
+  @@index([status])
+  @@index([fleetClass])
+  @@index([unitId])
+  @@index([startDate])
+  @@index([returnedAt])
+  @@index([updatedAt])
+}
+
+model MaintenanceOrder {
+  id            String    @id @default(uuid())
+  orderNo       String    @unique // WO-YYYY-NNNNN, server-assigned (TMP-WO-xxx while offline)
+  vehicleId     String?   // optional link to a Vehicle row
+  vehiclePlate  String    // denormalized so orders work offline
+  vehicleLabel  String?   // make/model snapshot for display
+  customerName  String?
+  customerPhone String?
+  serviceType   String    @default("OIL") // OIL | FULL | BRAKES | TIRES | DIAG | AC | COOLANT | BELT
+  status        String    @default("WAITING") // WAITING | IN_PROGRESS | COMPLETED | CANCELLED
+  priority      String    @default("NORMAL") // NORMAL | URGENT
+  mechanicName  String?
+  scheduledFor  DateTime? // planned service date
+  startedAt     DateTime?
+  completedAt   DateTime?
+  laborHours    Float     @default(0) // catalog snapshot
+  laborTotal    Float     @default(0) // BIF
+  partsTotal    Float     @default(0) // BIF, from snapshot lines
+  discount      Float     @default(0) // BIF, clamped to gross
+  totalAmount   Float     @default(0) // canonical BIF
+  paidAmount    Float     @default(0)
+  paymentMethod String?   // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  notes         String?
+  findings      String?   // mechanic notes captured at completion
+  partsJson     String    @default("[]") // [{productId, sku, name, qty, unitPrice, lineTotal}]
+
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean   @default(false)
+
+  @@index([status])
+  @@index([orderNo])
+  @@index([vehiclePlate])
+  @@index([scheduledFor])
+  @@index([completedAt])
+  @@index([updatedAt])
+}
+
+model CarWashOrder {
+  id            String    @id @default(uuid())
+  orderNo       String    @unique // WSH-YYYY-NNNNN, server-assigned (TMP-WSH-xxx while offline)
+  customerName  String?
+  customerPhone String?
+  vehiclePlate  String
+  vehicleType   String    @default("SEDAN") // SEDAN | SUV | VAN | PICKUP | TRUCK | BUS
+  serviceType   String    @default("CLASSIC") // EXPRESS | CLASSIC | PREMIUM | INTERIOR | ENGINE | FULL | WAX
+  basePrice     Float     @default(0) // catalog snapshot (BIF)
+  surcharge     Float     @default(0) // vehicle-size premium (BIF)
+  discount      Float     @default(0) // BIF
+  totalAmount   Float     @default(0) // canonical BIF
+  paidAmount    Float     @default(0)
+  paymentMethod String?   // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  status        String    @default("WAITING") // WAITING | IN_PROGRESS | COMPLETED | CANCELLED
+  bay           Int         @default(1)
+  washerName    String?
+  notes         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean   @default(false)
+
+  @@index([status])
+  @@index([orderNo])
+  @@index([vehiclePlate])
+  @@index([completedAt])
+  @@index([updatedAt])
+}

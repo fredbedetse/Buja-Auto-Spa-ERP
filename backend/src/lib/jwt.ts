@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-min-32-chars-long';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-min-32-chars';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+import { ENV } from '../config/env';
+
+const JWT_SECRET = ENV.jwtSecret;
+const JWT_REFRESH_SECRET = ENV.jwtRefreshSecret;
+const JWT_EXPIRES_IN = ENV.accessTtl;
+const JWT_REFRESH_EXPIRES_IN = ENV.refreshTtl;
 
 export interface AccessTokenPayload {
   userId: string;

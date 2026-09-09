@@ -1,0 +1,18 @@
+# systemd unit alternative (drop into /etc/systemd/system/buja-api.service)
+[Unit]
+Description=Buja Auto Spa ERP API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=buja
+WorkingDirectory=/srv/buja-erp/backend
+ExecStart=/usr/bin/node dist/index.js
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

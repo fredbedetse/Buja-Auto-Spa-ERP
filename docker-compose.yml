@@ -1,0 +1,48 @@
+# Buja Auto Spa ERP - production stack (Postgres + API + nginx-served SPA).
+# Usage: cp .env.production.example .env.production, fill it in, then:
+#   docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bujaerp}
+      POSTGRES_USER: ${POSTGRES_USER:-buja}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-buja} -d ${POSTGRES_DB:-bujaerp}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PRISMA_SCHEMA: postgres
+      DATABASE_URL: postgresql://$
+      TRUST_PROXY: "1"
+      JSON_LOGS: "1"
+    expose:
+      - "4000"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    # TLS: terminate with your own proxy or mount certificates and extend
+    # frontend/nginx.conf with a 443 server block (see DEPLOYMENT.md step 5).
+
+volumes:
+  pgdata:
