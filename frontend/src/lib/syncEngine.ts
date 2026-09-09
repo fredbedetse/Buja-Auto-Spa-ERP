@@ -124,7 +124,7 @@ class SyncEngine {
           serverVersion?: number;
           serverData?: any;
         }>;
-      }>('/sync/push', payload);
+      }>('/sync/push', payload, { signal: AbortSignal.timeout(20000) });
 
       let pushed = 0;
       let failed = 0;
@@ -281,7 +281,7 @@ class SyncEngine {
         deviceId,
         lastSyncAt: this.lastSyncAt,
         limit: 100,
-      });
+      }, { signal: AbortSignal.timeout(20000) });
 
       let pulled = 0;
 

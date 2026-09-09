@@ -202,6 +202,18 @@ router.post('/', authorize(['inventory:manage']), async (req: AuthenticatedReque
       }
     }
 
+    // A deleted record still holds the unique key - revive it instead of blocking re-registration forever
+    const trashed = await prisma.product.findFirst({ where: { sku: rest.sku, isDeleted: true } });
+    if (trashed) {
+      const revived = await prisma.product.update({
+        where: { id: trashed.id },
+        data: { ...rest, ...(clientId ? { id: clientId } : {}), isDeleted: false, isActive: rest.isActive ?? true, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId: deviceId || req.user?.deviceId },
+      });
+      await prisma.syncLog.create({ data: { userId: req.user?.userId, deviceId: deviceId || req.user?.deviceId || 'server', entityType: 'Product', entityId: revived.id, operation: 'CREATE', status: 'SYNCED', version: revived.version, syncedAt: new Date() } });
+      await audit(req.user?.userId, 'product.create', revived.id, revived, { revivedFromDeleted: true }, deviceId, req.ip);
+      return res.status(201).json(revived);
+    }
+
     const created = await prisma.product.create({
       data: {
         ...rest,

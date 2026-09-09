@@ -33,6 +33,19 @@ const syncPullSchema = z.object({
 });
 
 // POST /api/sync/push - Push local changes to cloud
+
+// A soft-deleted row still holds its @unique key (phone/sku/plate). When a replayed
+// CREATE collides with such a tombstone, revive it (re-keying to the client's id)
+// instead of failing the queue item forever.
+async function reviveTombstone(model: any, key: Record<string, any>, entityId: string, data: any) {
+  const trashed = await model.findFirst({ where: { ...key, isDeleted: true } });
+  if (!trashed) return null;
+  return model.update({
+    where: { id: trashed.id },
+    data: { ...data, id: entityId, isDeleted: false, isActive: data.isActive ?? true, version: { increment: 1 }, lastSyncedAt: new Date() },
+  });
+}
+
 router.post('/push', async (req: AuthenticatedRequest, res) => {
   try {
     const parsed = syncPushSchema.safeParse(req.body);
@@ -250,9 +263,7 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
                 }
               });
             } else {
-              await prisma.customer.create({
-                data: {
-                  id: entityId,
+              const _map: any = {
                   name: cdata.name,
                   contactName: cdata.contactName ?? null,
                   phone: cdata.phone,
@@ -266,8 +277,13 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
                   isActive: cdata.isActive ?? true,
                   lastSyncedAt: new Date(),
                   deviceId,
-                }
-              });
+                };
+              const _tr = await prisma.customer.findFirst({ where: { phone: _map.phone, isDeleted: true } });
+              if (_tr) {
+                await prisma.customer.update({ where: { id: _tr.id }, data: { ..._map, id: entityId, isDeleted: false, version: { increment: 1 } } });
+              } else {
+                await prisma.customer.create({ data: { id: entityId, ..._map } });
+              }
             }
 
             await prisma.syncLog.create({
@@ -418,7 +434,15 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
                 await prisma.supplier.create({ data: { id: entityId, ...sdata, lastSyncedAt: new Date(), deviceId } });
               }
             } catch (supErr: any) {
-              const reason = supErr.code === 'P2002' ? 'Duplicate phone - another supplier already uses it' : (supErr.message || 'Supplier could not be applied');
+                            if (supErr.code === 'P2002') {
+                const rev = await reviveTombstone(prisma.supplier, { phone: sdata.phone }, entityId, { ...sdata, deviceId });
+                if (rev) {
+                  await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: rev.version, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+                  results.push({ entityType, entityId, status: 'SYNCED', version: rev.version });
+                  continue;
+                }
+              }
+const reason = supErr.code === 'P2002' ? 'Duplicate phone - another supplier already uses it' : (supErr.message || 'Supplier could not be applied');
               results.push({ entityType, entityId, status: 'FAILED', error: reason });
               await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: reason, payload: JSON.stringify(data) } });
               continue;
@@ -468,9 +492,7 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
             if (existing && existing.isDeleted) {
               await prisma.product.update({ where: { id: entityId }, data: { ...pdata, isDeleted: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
             } else {
-              await prisma.product.create({
-                data: {
-                  id: entityId,
+              const _map: any = {
                   name: pdata.name,
                   sku: pdata.sku || `OFS-${Date.now()}`,
                   category: pdata.category ?? 'GENERAL',
@@ -485,8 +507,13 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
                   isActive: pdata.isActive ?? true,
                   lastSyncedAt: new Date(),
                   deviceId,
-                }
-              });
+                };
+              const _tr = await prisma.product.findFirst({ where: { sku: _map.sku, isDeleted: true } });
+              if (_tr) {
+                await prisma.product.update({ where: { id: _tr.id }, data: { ..._map, id: entityId, isDeleted: false, version: { increment: 1 } } });
+              } else {
+                await prisma.product.create({ data: { id: entityId, ..._map } });
+              }
             }
 
             await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
@@ -600,7 +627,15 @@ router.post('/push', async (req: AuthenticatedRequest, res) => {
                 await prisma.vehicle.create({ data: { id: entityId, ...vdata, lastSyncedAt: new Date(), deviceId } });
               }
             } catch (vehErr: any) {
-              const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle already uses it' : (vehErr.message || 'Vehicle could not be applied');
+                            if (vehErr.code === 'P2002') {
+                const rev = await reviveTombstone(prisma.vehicle, { plateNumber: vdata.plateNumber }, entityId, { ...vdata, deviceId });
+                if (rev) {
+                  await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: rev.version, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+                  results.push({ entityType, entityId, status: 'SYNCED', version: rev.version });
+                  continue;
+                }
+              }
+const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle already uses it' : (vehErr.message || 'Vehicle could not be applied');
               results.push({ entityType, entityId, status: 'FAILED', error: reason });
               await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: reason, payload: JSON.stringify(data) } });
               continue;
