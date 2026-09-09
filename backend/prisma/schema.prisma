@@ -401,3 +401,34 @@ model PurchaseItem {
   @@index([purchaseId])
   @@index([productId])
 }
+
+model Vehicle {
+  id            String    @id @default(uuid())
+  plateNumber   String    @unique
+  type          String    @default("TRUCK") // TRUCK | BUS | MINIBUS | PICKUP | CAR | OTHER
+  make          String
+  model         String?
+  year          Int?
+  vin           String?
+  color         String?
+  status        String    @default("AVAILABLE") // AVAILABLE | IN_USE | IN_MAINTENANCE | RENTED | RETIRED
+  odometerKm    Int       @default(0)
+  driverName    String?
+  driverPhone   String?
+  purchaseDate  DateTime?
+  purchasePrice Float?    // canonical BIF
+  notes         String?
+  isActive      Boolean   @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([status])
+  @@index([type])
+  @@index([make])
+  @@index([updatedAt])
+}

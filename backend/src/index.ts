@@ -12,6 +12,7 @@ import inventoryRoutes from './routes/inventory';
 import salesRoutes from './routes/sales';
 import suppliersRoutes from './routes/suppliers';
 import purchasesRoutes from './routes/purchases';
+import vehiclesRoutes from './routes/vehicles';
 import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
 
@@ -53,6 +54,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/purchases', purchasesRoutes);
+app.use('/api/vehicles', vehiclesRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Root endpoint
@@ -72,6 +74,7 @@ app.get('/', (req, res) => {
       sales: '/api/sales',
       suppliers: '/api/suppliers',
       purchases: '/api/purchases',
+      vehicles: '/api/vehicles',
       sync: '/api/sync',
     },
     features: {
@@ -89,7 +92,7 @@ app.use((req, res) => {
     error: 'Endpoint not found',
     path: req.path,
     method: req.method,
-    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sales', '/api/suppliers', '/api/purchases', '/api/sync'],
+    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sales', '/api/suppliers', '/api/purchases', '/api/vehicles', '/api/sync'],
   });
 });
 

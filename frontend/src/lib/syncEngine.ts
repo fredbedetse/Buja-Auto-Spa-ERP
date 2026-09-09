@@ -188,6 +188,12 @@ class SyncEngine {
                 if (result.version) upd.version = result.version;
                 if ((result as any).poNumber) upd.poNumber = (result as any).poNumber;
                 await localDB.purchases.update(result.entityId, upd);
+              } else if (result.entityType === 'Vehicle') {
+                await localDB.vehicles.update(result.entityId, {
+                  _dirty: false,
+                  syncStatus: 'SYNCED',
+                  ...(result.version ? { version: result.version } : {}),
+                } as any);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -360,6 +366,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.suppliers.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'Vehicle') {
+            if (change.operation === 'DELETE') {
+              await localDB.vehicles.delete(change.entityId);
+            } else {
+              const existing = await localDB.vehicles.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.vehicles.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'Purchase') {
@@ -586,6 +604,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Purchase') {
           await localDB.purchases.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Vehicle') {
+          await localDB.vehicles.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

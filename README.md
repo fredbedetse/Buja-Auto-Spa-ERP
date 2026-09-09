@@ -146,6 +146,27 @@ This ERP is designed to **continue operating when internet is unavailable** and 
       zero console errors. Curl-verified API contract (totals server-computed, immutability 404,
       cancel-guard 409 details). Full regression green: 20/20, 15/15, 21/21.
 
+## ✅ Phase 6 Implemented - Vehicles / Fleet Register
+
+- [x] **Fleet module** (`/vehicles`) - full CRUD for trucks, buses, minibuses, pickups & cars:
+      plate (auto-uppercase, unique), type, manufacturer/model/year/VIN/color, status board
+      (Available / In use / In maintenance / Rented / Retired, color-coded chips + filter row),
+      odometer, driver name & phone, purchase date/price and notes; soft delete with history kept.
+- [x] **Server guards**: duplicate plate -> 409 `DUPLICATE_PLATE`; odometer never rolls back -
+      stale offline edits below the recorded value are rejected with 409 `ODOMETER_REGRESSION`
+      (and clamped, not rejected, when replayed through the sync queue); optimistic version locking
+      on PUT (409 `VERSION_CONFLICT` returns server data).
+- [x] Offline-first: `Vehicle` branch in sync push/pull + SERVER_WINS conflict handling; Dexie v5
+      `vehicles` store; rows created offline keep their `Pending` chip until queued push lands.
+- [x] EN/FR localized from day one (~67 `veh.*` keys) & currency-aware fleet value (BIF canonical,
+      USD display at the 6,000 peg); dashboard gained the Vehicles module card (fleet count +
+      in-use badge) and nav "Soon" badge removed.
+- [x] QA: Playwright suite 24/24 (seeded fleet & stats, create with plate normalization, dup-plate
+      rejection, status edit, odometer guard surfaced in UI, delete, fully-offline create ->
+      "Sync now" -> appears server-side, USD value formatting, FR spot checks, cross-module smoke,
+      zero console errors) + curl suite for all 409 guards & stats. Offline sale/purchase loops
+      re-verified 9/9 after the Dexie v5 bump.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -244,6 +265,7 @@ After foundation verification:
 - ~~Inventory / Truck Parts~~ (completed in Phase 3)
 - ~~Sales / POS~~ (completed in Phase 4)
 - ~~Suppliers / Purchases~~ (completed in Phase 5)
+- ~~Vehicles / Fleet~~ (completed in Phase 6)
 - Invoices / Payments
 - Car Wash
 - Maintenance

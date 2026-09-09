@@ -462,6 +462,26 @@ async function seed() {
     console.log(`ℹ️ Suppliers already present (${existingSuppliers}), skipping`);
   }
 
+  // Seed demo vehicles (Phase 6) - only when table is empty
+  const existingVehicles = await prisma.vehicle.count({ where: { isDeleted: false } });
+  if (existingVehicles === 0) {
+    const vehicles = [
+      { plateNumber: 'BB 4521 A', type: 'TRUCK', make: 'Hino', model: '500 Series', year: 2018, color: 'White', status: 'IN_USE', odometerKm: 152340, driverName: 'Emmanuel Nkurunziza', driverPhone: '+257792200111', purchaseDate: new Date('2018-03-15'), purchasePrice: 45000000, notes: 'Long-haul Gitega-Dar. Service every 10,000 km.' },
+      { plateNumber: 'BB 7810 A', type: 'TRUCK', make: 'Toyota', model: 'Dyna', year: 2020, color: 'Silver', status: 'AVAILABLE', odometerKm: 98210, purchaseDate: new Date('2020-08-02'), purchasePrice: 28000000, notes: 'Backup hauler - ready to load' },
+      { plateNumber: 'AA 1204 C', type: 'TRUCK', make: 'Mitsubishi', model: 'Fuso', year: 2015, color: 'Blue', status: 'IN_MAINTENANCE', odometerKm: 210450, driverName: 'Jean Bosco', driverPhone: '+257793300222', purchaseDate: new Date('2015-01-20'), purchasePrice: 19500000, notes: 'Clutch replacement in bay 2' },
+      { plateNumber: 'BB 3399 A', type: 'BUS', make: 'Hyundai', model: 'County', year: 2017, color: 'Yellow', status: 'RENTED', odometerKm: 175300, purchaseDate: new Date('2017-06-10'), purchasePrice: 32000000, notes: 'On 6-month charter to NGO fleet contract' },
+      { plateNumber: 'AC 872 B', type: 'MINIBUS', make: 'Toyota', model: 'Hiace', year: 2021, color: 'White', status: 'AVAILABLE', odometerKm: 64230, purchaseDate: new Date('2021-11-05'), purchasePrice: 21000000, notes: 'Airport shuttle - 14 seats' },
+      { plateNumber: 'BD 5510 A', type: 'PICKUP', make: 'Isuzu', model: 'D-Max', year: 2022, color: 'Grey', status: 'IN_USE', odometerKm: 45120, driverName: 'Aline Irakoze', driverPhone: '+257794400333', purchaseDate: new Date('2022-02-18'), purchasePrice: 24500000, notes: 'Parts delivery runs around Gitega' },
+      { plateNumber: 'AB 777 A', type: 'CAR', make: 'Nissan', model: 'NP200', year: 2011, color: 'Red', status: 'RETIRED', odometerKm: 302800, purchaseDate: new Date('2011-05-30'), purchasePrice: 9000000, isActive: false, notes: 'Engine wear - sold for parts pending' },
+    ] as any[];
+    for (const vh of vehicles) {
+      await prisma.vehicle.upsert({ where: { plateNumber: vh.plateNumber }, update: {}, create: vh });
+    }
+    console.log(`Seeded ${vehicles.length} demo vehicles`);
+  } else {
+    console.log(`Vehicles already present (${existingVehicles}), skipping`);
+  }
+
   // Seed demo purchases (Phase 5) - only when table is empty
   const existingPurchases = await prisma.purchase.count({ where: { isDeleted: false } });
   if (existingPurchases === 0) {

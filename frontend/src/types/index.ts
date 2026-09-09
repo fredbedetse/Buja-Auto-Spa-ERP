@@ -171,6 +171,30 @@ export interface Purchase {
   syncStatus?: SyncStatus;
 }
 
+export interface Vehicle {
+  id: string;
+  plateNumber: string;
+  type: 'TRUCK' | 'BUS' | 'MINIBUS' | 'PICKUP' | 'CAR' | 'OTHER';
+  make: string;
+  model?: string | null;
+  year?: number | null;
+  vin?: string | null;
+  color?: string | null;
+  status: 'AVAILABLE' | 'IN_USE' | 'IN_MAINTENANCE' | 'RENTED' | 'RETIRED';
+  odometerKm: number;
+  driverName?: string | null;
+  driverPhone?: string | null;
+  purchaseDate?: string | null;
+  purchasePrice?: number | null; // canonical BIF
+  notes?: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;

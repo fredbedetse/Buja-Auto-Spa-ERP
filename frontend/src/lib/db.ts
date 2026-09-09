@@ -1,7 +1,7 @@
 // Offline-first local database using Dexie (IndexedDB)
 // This is the primary offline storage, NOT localStorage
 import Dexie, { type Table } from 'dexie';
-import type { User, Customer, Product, Sale, Supplier, Purchase, SyncQueueItem, SyncMetadata } from '../types';
+import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
 
 export interface LocalUser extends User {
   _localId?: string;
@@ -23,6 +23,11 @@ export interface LocalSale extends Sale {
 }
 
 export interface LocalSupplier extends Supplier {
+  _dirty?: boolean;
+}
+
+export interface LocalVehicle extends Vehicle {
+  syncStatus?: SyncStatus;
   _dirty?: boolean;
 }
 
@@ -54,11 +59,11 @@ class BujaLocalDB extends Dexie {
   
   // Future tables for business modules (foundation only)
   customers!: Table<LocalCustomer, string>;
-  vehicles!: Table<any, string>;
   inventory!: Table<LocalProduct, string>;
   sales!: Table<LocalSale, string>;
   suppliers!: Table<LocalSupplier, string>;
   purchases!: Table<LocalPurchase, string>;
+  vehicles!: Table<LocalVehicle, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -93,6 +98,11 @@ class BujaLocalDB extends Dexie {
     this.version(4).stores({
       suppliers: 'id, name, phone, isActive, updatedAt, syncStatus',
       purchases: 'id, poNumber, supplierId, status, orderDate, updatedAt, syncStatus',
+    });
+
+    // Version 5 - Vehicles / Fleet (Phase 6)
+    this.version(5).stores({
+      vehicles: 'id, plateNumber, status, type, isActive, updatedAt, syncStatus',
     });
   }
 

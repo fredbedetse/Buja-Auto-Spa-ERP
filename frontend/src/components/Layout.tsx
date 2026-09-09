@@ -38,7 +38,7 @@ const navigation = [
   { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard:read', exact: true },
   { key: 'nav.customers', href: '/customers', icon: Users, module: 'customers:read' },
   { key: 'nav.suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read' },
-  { key: 'nav.vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read', soon: true },
+  { key: 'nav.vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read' },
   { key: 'nav.employees', href: '/employees', icon: UserCog, module: 'users:read', soon: true },
   { key: 'nav.truckParts', href: '/inventory', icon: Package, module: 'inventory:read' },
   { key: 'nav.purchases', href: '/purchases', icon: PackageCheck, module: 'purchases:read' },
