@@ -161,7 +161,7 @@ This ERP is designed to **continue operating when internet is unavailable** and 
 - [x] EN/FR localized from day one (~67 `veh.*` keys) & currency-aware fleet value (BIF canonical,
       USD display at the 6,000 peg); dashboard gained the Vehicles module card (fleet count +
       in-use badge) and nav "Soon" badge removed.
-- [x] QA: Playwright suite 24/24 (seeded fleet & stats, create with plate normalization, dup-plate
+- [x] QA: Playwright suite 25/25 (incl. delete-then-re-register tombstone revive; seeded fleet & stats, create with plate normalization, dup-plate
       rejection, status edit, odometer guard surfaced in UI, delete, fully-offline create ->
       "Sync now" -> appears server-side, USD value formatting, FR spot checks, cross-module smoke,
       zero console errors) + curl suite for all 409 guards & stats. Offline sale/purchase loops
@@ -258,6 +258,32 @@ buja-auto-spa-erp/
 └── README.md
 ```
 
+## ✅ Phase 7 Implemented - Employees / Payroll Register
+
+- [x] **Employees module** (`/employees`) - staff register: name, position (Driver, Mechanic,
+      Cashier, Car washer, Salesperson, Accountant, Manager, Admin, Other), phone/email/national ID/
+      city, hire date, monthly salary, employment status (Active / On leave / Terminated, color-coded
+      chips + filter row), notes; soft delete keeps payroll history; search spans names, phone,
+      email & national ID client-side.
+- [x] **Payroll stats**: staff size, active, on-leave and **monthly payroll** (sum of salaries for
+      everyone not terminated - on-leave staff still count), currency-aware (BIF canonical, USD at
+      the 6,000 peg). Server-side PUT applies optimistic version locking (409 `VERSION_CONFLICT`),
+      and setting a record to `TERMINATED` automatically clears the on-the-payroll flag.
+- [x] **RBAC**: new `employees:read` / `employees:manage` permissions (42 total); Manager manages
+      the register, Accountant is read-only (payroll), other roles see nothing - nav entry hidden,
+      API returns 403.
+- [x] Offline-first: `Employee` branch in sync push/pull + SERVER_WINS conflict handling; Dexie v6
+      `employees` store; hires created offline keep their `Pending` chip until the queued push lands.
+- [x] EN/FR localized (~48 `emp.*` keys); dashboard gained the Employees module card (headcount +
+      monthly payroll badge); the module counter moved to "6 modules live".
+- [x] QA: Playwright suite 27/27 (seeded register & payroll math, search/status filters, create,
+      validation, edit to On leave with payroll still counting them, delete restores payroll, fully
+      offline hire -> "Sync now" -> appears server-side, USD payroll formatting, FR spot checks,
+      manager-role access, cross-module smoke, zero console errors) + curl contract suite (stats,
+      400 zod details, manager 201, 401 no-token). The vehicles fleet suite was hardened to 25/25
+      (delete-then-re-register revive check added) and the shared-file changes were re-verified with
+      a 10/10 cross-module smoke (RBAC, offline toggles, FR, auth error handling).
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -266,6 +292,7 @@ After foundation verification:
 - ~~Sales / POS~~ (completed in Phase 4)
 - ~~Suppliers / Purchases~~ (completed in Phase 5)
 - ~~Vehicles / Fleet~~ (completed in Phase 6)
+- ~~Employees / Payroll~~ (completed in Phase 7)
 - Invoices / Payments
 - Car Wash
 - Maintenance

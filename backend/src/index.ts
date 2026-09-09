@@ -13,6 +13,7 @@ import salesRoutes from './routes/sales';
 import suppliersRoutes from './routes/suppliers';
 import purchasesRoutes from './routes/purchases';
 import vehiclesRoutes from './routes/vehicles';
+import employeesRoutes from './routes/employees';
 import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
 
@@ -55,6 +56,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/purchases', purchasesRoutes);
 app.use('/api/vehicles', vehiclesRoutes);
+app.use('/api/employees', employeesRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Root endpoint

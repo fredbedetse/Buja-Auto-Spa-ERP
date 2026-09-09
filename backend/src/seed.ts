@@ -30,6 +30,10 @@ async function seed() {
     // Vehicles
     { key: 'vehicles:read', module: 'vehicles', action: 'read', description: 'View vehicles' },
     { key: 'vehicles:manage', module: 'vehicles', action: 'manage', description: 'Manage vehicles' },
+
+    // Employees
+    { key: 'employees:read', module: 'employees', action: 'read', description: 'View employees' },
+    { key: 'employees:manage', module: 'employees', action: 'manage', description: 'Manage employees' },
     
     // Inventory
     { key: 'inventory:read', module: 'inventory', action: 'read', description: 'View inventory' },
@@ -112,6 +116,7 @@ async function seed() {
         'customers:manage',
         'suppliers:manage',
         'vehicles:manage',
+        'employees:manage',
         'inventory:manage',
         'sales:manage',
         'purchases:manage',
@@ -198,6 +203,7 @@ async function seed() {
         'payments:read',
         'reports:read',
         'reports:manage',
+        'employees:read',
       ],
     },
     {
@@ -480,6 +486,25 @@ async function seed() {
     console.log(`Seeded ${vehicles.length} demo vehicles`);
   } else {
     console.log(`Vehicles already present (${existingVehicles}), skipping`);
+  }
+
+  // Seed demo employees (Phase 7) - only when table is empty
+  const existingEmployees = await prisma.employee.count({ where: { isDeleted: false } });
+  if (existingEmployees === 0) {
+    const employees = [
+      { firstName: 'Dieudonn\u00e9', lastName: 'Havyarimana', position: 'DRIVER', phone: '+257791100222', email: 'dieudonne.h@bujaautospa.bi', nationalId: '1000001-A', address: 'Kibenga, Gitega', city: 'Gitega', hireDate: new Date('2016-02-01'), salary: 450000, employmentStatus: 'ACTIVE', notes: 'Long-haul permit C+E. Primary on BB 4521 A.' },
+      { firstName: 'Claudine', lastName: 'Niyongere', position: 'CASHIER', phone: '+257792200333', email: 'claudine.n@bujaautospa.bi', city: 'Gitega', hireDate: new Date('2019-07-15'), salary: 380000, employmentStatus: 'ACTIVE', notes: 'Front desk + car wash counter' },
+      { firstName: 'Eric', lastName: 'Bizimana', position: 'MECHANIC', phone: '+257793300444', nationalId: '1000003-A', city: 'Gitega', hireDate: new Date('2017-03-10'), salary: 600000, employmentStatus: 'ACTIVE', notes: 'Diesel specialist, Hino/Fuso certified' },
+      { firstName: 'Sylvie', lastName: 'Nikwigize', position: 'ACCOUNTANT', phone: '+257794400555', email: 'sylvie.n@bujaautospa.bi', city: 'Gitega', hireDate: new Date('2021-01-04'), salary: 750000, employmentStatus: 'ACTIVE', notes: 'Payroll, supplier reconciliations, OBR filings' },
+      { firstName: 'Jean-Paul', lastName: 'Ndikumana', position: 'WASHER', phone: '+257795500666', city: 'Gitega', hireDate: new Date('2022-09-01'), salary: 220000, employmentStatus: 'ON_LEAVE', notes: 'Family leave until December' },
+      { firstName: 'Aline', lastName: 'Uwimana', position: 'SALESPERSON', phone: '+257796600777', city: 'Bujumbura', hireDate: new Date('2020-05-11'), salary: 420000, employmentStatus: 'TERMINATED', isActive: false, notes: 'Moved abroad - ended on good terms' },
+    ] as any[];
+    for (const em of employees) {
+      await prisma.employee.create({ data: em });
+    }
+    console.log(`Seeded ${employees.length} demo employees`);
+  } else {
+    console.log(`Employees already present (${existingEmployees}), skipping`);
   }
 
   // Seed demo purchases (Phase 5) - only when table is empty

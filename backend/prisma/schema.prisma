@@ -432,3 +432,32 @@ model Vehicle {
   @@index([make])
   @@index([updatedAt])
 }
+
+model Employee {
+  id               String   @id @default(uuid())
+  firstName        String
+  lastName         String
+  position         String   @default("OTHER") // DRIVER | MECHANIC | CASHIER | WASHER | SALESPERSON | ACCOUNTANT | MANAGER | ADMIN | OTHER
+  phone            String?
+  email            String?
+  nationalId       String?
+  address          String?
+  city             String?
+  hireDate         DateTime
+  salary           Float    @default(0) // canonical BIF per month
+  employmentStatus String   @default("ACTIVE") // ACTIVE | ON_LEAVE | TERMINATED
+  notes            String?
+  isActive         Boolean  @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([employmentStatus])
+  @@index([position])
+  @@index([lastName])
+  @@index([updatedAt])
+}

@@ -670,6 +670,58 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'Employee') {
+          const existing = await prisma.employee.findUnique({ where: { id: entityId } });
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Entity already exists', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Entity already exists', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+            const { deviceId: _ed, id: _eid, version: _ev, ...edata } = data || {};
+            if (edata.hireDate) edata.hireDate = new Date(edata.hireDate);
+            try {
+              if (existing && existing.isDeleted) {
+                await prisma.employee.update({ where: { id: entityId }, data: { ...edata, isDeleted: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+              } else {
+                await prisma.employee.create({ data: { id: entityId, ...edata, lastSyncedAt: new Date(), deviceId } });
+              }
+            } catch (empErr: any) {
+              const reason = empErr.message || 'Employee could not be applied';
+              results.push({ entityType, entityId, status: 'FAILED', error: reason });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'FAILED', version: 0, clientVersion, errorMessage: reason, payload: JSON.stringify(data) } });
+              continue;
+            }
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: 1 });
+
+          } else if (operation === 'UPDATE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Entity not found' });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'FAILED', version: 0, clientVersion, errorMessage: 'Entity not found', payload: JSON.stringify(data) } });
+            } else if (clientVersion !== undefined && clientVersion !== existing.version) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, clientVersion, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, serverVersion: existing.version, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+            } else {
+              const { deviceId: _ed2, id: _eid2, version: _ev2, ...eupdate } = data || {};
+              const upd: any = { ...eupdate };
+              if (upd.hireDate) upd.hireDate = new Date(upd.hireDate);
+              const updated = await prisma.employee.update({ where: { id: entityId }, data: { ...upd, isDeleted: false, version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, serverVersion: existing.version, payload: JSON.stringify(data), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+            }
+
+          } else if (operation === 'DELETE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already deleted' });
+              continue;
+            }
+            await prisma.employee.update({ where: { id: entityId }, data: { isDeleted: true, isActive: false, employmentStatus: 'TERMINATED', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Purchase') {
           const existing = await prisma.purchase.findFirst({ where: { id: entityId }, include: { items: true } });
 
@@ -973,6 +1025,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: vh,
         version: vh.version,
         timestamp: vh.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('Employee')) {
+      const employees = await prisma.employee.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...employees.map(em => ({
+        entityType: 'Employee',
+        entityId: em.id,
+        operation: 'UPDATE',
+        data: em,
+        version: em.version,
+        timestamp: em.updatedAt.toISOString(),
       })));
     }
 

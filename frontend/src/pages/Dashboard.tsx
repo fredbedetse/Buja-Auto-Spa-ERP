@@ -3,7 +3,8 @@ import {
   Users, Package, Truck, Wrench, Droplets, Zap, 
   TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
-  Activity, HardDrive, Cloud, Smartphone, PackageCheck
+  Activity, HardDrive, Cloud, Smartphone, PackageCheck,
+  UserCog,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -25,6 +26,8 @@ interface SystemStats {
   owedOut: number;
   vehicleCount: number;
   vehicleInUse: number;
+  employeeCount: number;
+  empPayroll: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -50,6 +53,8 @@ export default function Dashboard() {
     owedOut: 0,
     vehicleCount: 0,
     vehicleInUse: 0,
+    employeeCount: 0,
+    empPayroll: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -103,6 +108,8 @@ export default function Dashboard() {
         let serverOwed: number | null = null;
         let serverVehicles: number | null = null;
         let serverVehInUse: number | null = null;
+        let serverEmployees: number | null = null;
+        let serverEmpPayroll: number | null = null;
         try {
           const sstats = await apiClient.get<any>('/sales/stats');
           serverSales = sstats.total ?? null;
@@ -121,6 +128,7 @@ export default function Dashboard() {
           serverOwed = null;
         }
         serverVehicles = serverVehInUse = null;
+        serverEmployees = serverEmpPayroll = null;
         try {
           const vstats = await apiClient.get<any>('/vehicles/stats');
           serverVehicles = vstats.total ?? null;
@@ -128,6 +136,14 @@ export default function Dashboard() {
         } catch {
           serverVehicles = null;
           serverVehInUse = null;
+        }
+        try {
+          const estat = await apiClient.get<any>('/employees/stats');
+          serverEmployees = estat.total ?? null;
+          serverEmpPayroll = estat.payrollMonth ?? null;
+        } catch {
+          serverEmployees = null;
+          serverEmpPayroll = null;
         }
 
         const localCustomersCount = await localDB.customers.count();
@@ -145,6 +161,8 @@ export default function Dashboard() {
           owedOut: serverOwed ?? 0,
           vehicleCount: serverVehicles ?? (await localDB.vehicles.count()),
           vehicleInUse: serverVehInUse ?? 0,
+          employeeCount: serverEmployees ?? (await localDB.employees.count()),
+          empPayroll: serverEmpPayroll ?? 0,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -167,7 +185,8 @@ export default function Dashboard() {
     { name: 'dash.salesName', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? t('dash.outstanding', { money: fmtBif(stats.balanceOut) }) : undefined, desc: 'dash.salesDesc', href: '/sales', implemented: true },
     { name: 'dash.purchasesName', icon: PackageCheck, color: 'from-teal-500 to-emerald-500', count: String(stats.purchases), sub: stats.owedOut > 0 ? t('dash.purchasesSub', { money: fmtBif(stats.owedOut) }) : undefined, desc: 'dash.purchasesDesc', href: '/purchases', implemented: true },
     { name: 'dash.vehiclesName', icon: Truck, color: 'from-amber-500 to-orange-600', count: String(stats.vehicleCount), sub: stats.vehicleInUse > 0 ? t('dash.vehiclesSub', { n: stats.vehicleInUse }) : undefined, desc: 'dash.vehiclesDesc', href: '/vehicles', implemented: true },
-    { name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
+    { name: 'nav.employees', icon: UserCog, color: 'from-rose-500 to-pink-600', count: String(stats.employeeCount), sub: stats.empPayroll > 0 ? t('dash.empPayroll', { money: fmtBif(stats.empPayroll) }) : undefined, desc: 'dash.employeesDesc', href: '/employees', implemented: true },
+{ name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
     { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'dash.washDesc', href: '/carwash' },
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
     { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'dash.truckDesc', href: '/truck-rentals' },
@@ -338,7 +357,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 5 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 6 })}</span>
           </span>
         </div>
         

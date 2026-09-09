@@ -39,7 +39,7 @@ const navigation = [
   { key: 'nav.customers', href: '/customers', icon: Users, module: 'customers:read' },
   { key: 'nav.suppliers', href: '/suppliers', icon: Building2, module: 'suppliers:read' },
   { key: 'nav.vehicles', href: '/vehicles', icon: Truck, module: 'vehicles:read' },
-  { key: 'nav.employees', href: '/employees', icon: UserCog, module: 'users:read', soon: true },
+  { key: 'nav.employees', href: '/employees', icon: UserCog, module: 'employees:read' },
   { key: 'nav.truckParts', href: '/inventory', icon: Package, module: 'inventory:read' },
   { key: 'nav.purchases', href: '/purchases', icon: PackageCheck, module: 'purchases:read' },
   { key: 'nav.sales', href: '/sales', icon: ShoppingCart, module: 'sales:read' },

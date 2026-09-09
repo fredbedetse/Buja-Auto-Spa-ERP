@@ -195,6 +195,28 @@ export interface Vehicle {
   syncStatus?: SyncStatus;
 }
 
+export interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: 'DRIVER' | 'MECHANIC' | 'CASHIER' | 'WASHER' | 'SALESPERSON' | 'ACCOUNTANT' | 'MANAGER' | 'ADMIN' | 'OTHER';
+  phone?: string | null;
+  email?: string | null;
+  nationalId?: string | null;
+  address?: string | null;
+  city?: string | null;
+  hireDate: string;
+  salary: number; // canonical BIF per month
+  employmentStatus: 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED';
+  notes?: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;

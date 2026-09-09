@@ -1,7 +1,7 @@
 // Offline-first local database using Dexie (IndexedDB)
 // This is the primary offline storage, NOT localStorage
 import Dexie, { type Table } from 'dexie';
-import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
+import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
 
 export interface LocalUser extends User {
   _localId?: string;
@@ -35,6 +35,11 @@ export interface LocalPurchase extends Purchase {
   _dirty?: boolean;
 }
 
+export interface LocalEmployee extends Employee {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
 export interface LocalSyncMetadata extends SyncMetadata {
   id?: string;
 }
@@ -64,6 +69,7 @@ class BujaLocalDB extends Dexie {
   suppliers!: Table<LocalSupplier, string>;
   purchases!: Table<LocalPurchase, string>;
   vehicles!: Table<LocalVehicle, string>;
+  employees!: Table<LocalEmployee, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -103,6 +109,11 @@ class BujaLocalDB extends Dexie {
     // Version 5 - Vehicles / Fleet (Phase 6)
     this.version(5).stores({
       vehicles: 'id, plateNumber, status, type, isActive, updatedAt, syncStatus',
+    });
+
+    // Version 6 - Employees / Payroll register (Phase 7)
+    this.version(6).stores({
+      employees: 'id, lastName, position, employmentStatus, isActive, updatedAt, syncStatus',
     });
   }
 

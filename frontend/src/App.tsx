@@ -10,6 +10,7 @@ import InventoryPage from './pages/Inventory';
 import SalesPage from './pages/Sales';
 import SuppliersPage from './pages/Suppliers';
 import VehiclesPage from './pages/Vehicles';
+import EmployeesPage from './pages/Employees';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="customers" element={<CustomersPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="vehicles" element={<VehiclesPage />} />
+          <Route path="employees" element={<EmployeesPage />} />
           <Route path="employees" element={<NotImplemented />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
