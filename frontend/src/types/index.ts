@@ -109,6 +109,68 @@ export interface Sale {
   syncStatus?: SyncStatus;
 }
 
+export type SupplierType = string;
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string | null;
+  phone: string;
+  altPhone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  taxId?: string | null;
+  notes?: string | null;
+  leadTimeDays: number;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+  syncStatus?: SyncStatus;
+}
+
+export type PurchaseStatus = 'DRAFT' | 'RECEIVED' | 'CANCELLED';
+export type PurchasePayment = 'CASH' | 'CARD' | 'MOBILE_MONEY' | 'LOAN' | 'CREDIT_30';
+
+export interface PurchaseLine {
+  id?: string;
+  productId?: string | null;
+  productName: string;
+  sku?: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Purchase {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  orderDate: string;
+  expectedDate?: string | null;
+  status: PurchaseStatus;
+  paymentMethod: PurchasePayment;
+  invoiceRef?: string | null;
+  subtotal: number;
+  discount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  paidAmount: number;
+  balance: number;
+  notes?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  items: PurchaseLine[];
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  syncStatus?: SyncStatus;
+}
+
 export interface Role {
   id: string;
   name: RoleName;

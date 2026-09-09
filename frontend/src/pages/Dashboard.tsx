@@ -3,7 +3,7 @@ import {
   Users, Package, Truck, Wrench, Droplets, Zap, 
   TrendingUp, AlertTriangle, Database, Wifi, ShoppingCart, 
   RefreshCw, CheckCircle, Clock, Shield,
-  Activity, HardDrive, Cloud, Smartphone
+  Activity, HardDrive, Cloud, Smartphone, PackageCheck
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -21,6 +21,8 @@ interface SystemStats {
   lowStock: number;
   sales: number;
   balanceOut: number;
+  purchases: number;
+  owedOut: number;
   localUsers: number;
   pendingSync: number;
   failedSync: number;
@@ -42,6 +44,8 @@ export default function Dashboard() {
     lowStock: 0,
     sales: 0,
     balanceOut: 0,
+    purchases: 0,
+    owedOut: 0,
     localUsers: 0,
     pendingSync: 0,
     failedSync: 0,
@@ -91,6 +95,8 @@ export default function Dashboard() {
 
         let serverSales: number | null = null;
         let serverBalance: number | null = null;
+        let serverPurchases: number | null = null;
+        let serverOwed: number | null = null;
         try {
           const sstats = await apiClient.get<any>('/sales/stats');
           serverSales = sstats.total ?? null;
@@ -98,6 +104,15 @@ export default function Dashboard() {
         } catch {
           serverSales = null;
           serverBalance = null;
+        }
+        serverPurchases = serverOwed = null;
+        try {
+          const pstats = await apiClient.get<any>('/purchases/stats');
+          serverPurchases = pstats.total ?? null;
+          serverOwed = pstats.owedToSuppliers ?? null;
+        } catch {
+          serverPurchases = null;
+          serverOwed = null;
         }
 
         const localCustomersCount = await localDB.customers.count();
@@ -111,6 +126,8 @@ export default function Dashboard() {
           lowStock: serverLowStock ?? localLow,
           sales: serverSales ?? (await localDB.sales.count()),
           balanceOut: serverBalance ?? 0,
+          purchases: serverPurchases ?? (await localDB.purchases.count()),
+          owedOut: serverOwed ?? 0,
           localUsers: localUsersCount,
           pendingSync: pending,
           failedSync: failed,
@@ -131,6 +148,7 @@ export default function Dashboard() {
     { name: 'nav.customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'dash.customersDesc', href: '/customers', implemented: true },
 { name: 'nav.truckParts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? t('dash.lowStock', { n: stats.lowStock }) : undefined, desc: 'dash.partsDesc', href: '/inventory', implemented: true },
     { name: 'dash.salesName', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? t('dash.outstanding', { money: fmtBif(stats.balanceOut) }) : undefined, desc: 'dash.salesDesc', href: '/sales', implemented: true },
+    { name: 'dash.purchasesName', icon: PackageCheck, color: 'from-teal-500 to-emerald-500', count: String(stats.purchases), sub: stats.owedOut > 0 ? t('dash.purchasesSub', { money: fmtBif(stats.owedOut) }) : undefined, desc: 'dash.purchasesDesc', href: '/purchases', implemented: true },
     { name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
     { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-blue-500', count: 'Soon', desc: 'dash.washDesc', href: '/carwash' },
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
@@ -302,7 +320,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 3 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 4 })}</span>
           </span>
         </div>
         

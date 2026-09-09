@@ -176,6 +176,18 @@ class SyncEngine {
                 if (result.version) upd.version = result.version;
                 if ((result as any).invoiceNo) upd.invoiceNo = (result as any).invoiceNo;
                 await localDB.sales.update(result.entityId, upd);
+              } else if (result.entityType === 'Supplier') {
+                await localDB.suppliers.update(result.entityId, {
+                  _dirty: false,
+                  syncStatus: 'SYNCED',
+                  ...(result.version ? { version: result.version } : {}),
+                } as any);
+              } else if (result.entityType === 'Purchase') {
+                // Server assigned the canonical PO number - keep it
+                const upd: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) upd.version = result.version;
+                if ((result as any).poNumber) upd.poNumber = (result as any).poNumber;
+                await localDB.purchases.update(result.entityId, upd);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -336,6 +348,30 @@ class SyncEngine {
                 syncStatus: 'SYNCED',
                 _dirty: false,
               });
+            }
+            pulled++;
+          } else if (change.entityType === 'Supplier') {
+            if (change.operation === 'DELETE') {
+              await localDB.suppliers.delete(change.entityId);
+            } else {
+              const existing = await localDB.suppliers.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.suppliers.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'Purchase') {
+            if (change.operation === 'DELETE') {
+              await localDB.purchases.delete(change.entityId);
+            } else {
+              const existing = await localDB.purchases.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.purchases.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else {
@@ -538,6 +574,18 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Sale') {
           await localDB.sales.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Supplier') {
+          await localDB.suppliers.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'Purchase') {
+          await localDB.purchases.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

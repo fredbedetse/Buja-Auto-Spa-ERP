@@ -322,3 +322,82 @@ model SyncCheckpoint {
   lastId      String?
   updatedAt   DateTime @updatedAt
 }
+
+// ===== Phase 5: Suppliers & Purchases =====
+
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?
+  phone         String   @unique
+  altPhone      String?
+  email         String?
+  address       String?
+  city          String?
+  taxId         String?
+  notes         String?
+  leadTimeDays  Int      @default(7)
+  isActive      Boolean  @default(true)
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  @@index([name])
+  @@index([phone])
+  @@index([isActive])
+  @@index([updatedAt])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  poNumber      String   @unique // PO-YYYY-NNNNN, server-assigned (provisional TMP-xxx while offline)
+  supplierId    String
+  supplierName  String   // denormalized for offline display
+  orderDate     DateTime @default(now())
+  expectedDate  DateTime?
+  status        String   @default("RECEIVED") // DRAFT | RECEIVED | CANCELLED
+  paymentMethod String   @default("CASH")     // CASH | CARD | MOBILE_MONEY | LOAN | CREDIT_30
+  invoiceRef    String?  // supplier's own invoice number for the goods
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  taxRate       Float    @default(0)
+  taxAmount     Float    @default(0)
+  total         Float    @default(0)
+  paidAmount    Float    @default(0)
+  balance       Float    @default(0)
+  notes         String?
+
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean  @default(false)
+
+  items         PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([orderDate])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  productId   String?
+  productName String
+  sku         String?
+  quantity    Int
+  unitPrice   Float
+  lineTotal   Float
+
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
+}

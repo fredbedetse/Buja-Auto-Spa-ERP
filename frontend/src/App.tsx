@@ -8,6 +8,8 @@ import UsersPage from './pages/Users';
 import CustomersPage from './pages/Customers';
 import InventoryPage from './pages/Inventory';
 import SalesPage from './pages/Sales';
+import SuppliersPage from './pages/Suppliers';
+import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
 
@@ -70,11 +72,11 @@ export default function App() {
           
           {/* Business modules - foundation only, show not implemented */}
           <Route path="customers" element={<CustomersPage />} />
-          <Route path="suppliers" element={<NotImplemented />} />
+          <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="vehicles" element={<NotImplemented />} />
           <Route path="employees" element={<NotImplemented />} />
           <Route path="inventory" element={<InventoryPage />} />
-          <Route path="purchases" element={<NotImplemented />} />
+          <Route path="purchases" element={<PurchasesPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="invoices" element={<NotImplemented />} />
           <Route path="payments" element={<NotImplemented />} />

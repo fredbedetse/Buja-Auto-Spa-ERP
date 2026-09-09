@@ -119,6 +119,33 @@ This ERP is designed to **continue operating when internet is unavailable** and 
 - Note: server-side validation/error message strings are still English-only; UI toasts render
       them verbatim
 
+## ✅ Phase 5 Implemented - Suppliers & Purchases
+
+- [x] **Suppliers directory** (`/suppliers`) - full CRUD with search, lead-time chips (color-coded
+      by days), contact/alt-phone/email/city/tax-ID/notes fields, soft delete, and stats cards
+      (active count, total purchase spend, amount owed). Duplicate phone rejected server-side (409).
+- [x] **Purchases / stock receiving** (`/purchases`) - goods receipts against suppliers with a
+      Received-now vs Ordered-draft toggle: RECEIVED purchases increment product stock and update
+      the product's last purchase price atomically server-side (`buildPurchaseTxn`, same guard
+      machinery as sales); DRAFT orders book nothing until they sync as received. Editable per-line
+      buy-side unit cost (authoritative - catalog price is only a "last buy" hint), supplier
+      invoice ref, discount, payment method incl. `CREDIT_30` (30-day terms -> balance owed).
+      Canonical PO numbers `PO-YYYY-NNNNN` assigned by the server. Purchases are immutable -
+      cancel (DELETE) reverses stock, and cancelling a purchase whose goods were already
+      sold/consumed is blocked with a precise 409 (`CANCEL_WOULD_NEGATE_STOCK`).
+- [x] Offline-first end to end: supplier edits and purchases persist to Dexie immediately and
+      queue (`Supplier`/`Purchase` branches in push/pull + conflict resolution; markClean keeps the
+      server-assigned PO number); reconnect replays them and stock math lands server-side.
+- [x] Localized EN/FR from day one (~70 new `sup.*` / `po.*` dictionary keys) and currency-aware
+      (all amounts & inputs go through `useMoney()`; BIF canonical, USD display at the 6,000 peg).
+      Suppliers & Purchases nav entries no longer "Soon"; dashboard gained a Purchases module card
+      (order count + amount owed).
+- [x] QA: dedicated Playwright suite 25/25 - supplier CRUD + 409 dup-phone + UI delete,
+      received purchase bumps stock 20->22, draft leaves stock untouched, cancel restores 22->20,
+      fully-offline purchase queues -> syncs to canonical PO -> coolant 12->13, FR spot-checks,
+      zero console errors. Curl-verified API contract (totals server-computed, immutability 404,
+      cancel-guard 409 details). Full regression green: 20/20, 15/15, 21/21.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -216,7 +243,7 @@ After foundation verification:
 - ~~Customers module~~ (completed in Phase 2)
 - ~~Inventory / Truck Parts~~ (completed in Phase 3)
 - ~~Sales / POS~~ (completed in Phase 4)
-- Purchases / Suppliers
+- ~~Suppliers / Purchases~~ (completed in Phase 5)
 - Invoices / Payments
 - Car Wash
 - Maintenance

@@ -443,6 +443,100 @@ async function seed() {
     console.log(`ℹ️ Sales already present (${existingSales}), skipping`);
   }
 
+  // Seed demo suppliers (Phase 5) - only when table is empty
+  const existingSuppliers = await prisma.supplier.count({ where: { isDeleted: false } });
+  if (existingSuppliers === 0) {
+    const suppliers = [
+      { name: 'Toshiba Auto Parts Dar', contactName: 'Juma Mkwawa', phone: '+255754110022', email: 'sales@toshiba-parts.co.tz', city: 'Dar es Salaam', country: undefined, taxId: 'TIN-TZ-88123', leadTimeDays: 10, notes: 'Genuine Toyota/Hino - weekly consolidations' },
+      { name: 'Mombasa Wholesale', contactName: 'Amina Said', phone: '+254712330044', email: 'orders@mombasawholesale.co.ke', city: 'Mombasa', taxId: 'KRA-P051299', leadTimeDays: 7, notes: 'Tyres & filters, price-locked per quarter' },
+      { name: 'Kigali Tyre & Fluids Ltd', contactName: 'Eric Habimana', phone: '+250788556677', email: 'info@kigalityre.rw', city: 'Kigali', leadTimeDays: 4, notes: 'Fast cross-border for fluids' },
+      { name: 'Beijing Truck Parts Co', contactName: 'Wei Zhang', phone: '+8613500011223', email: 'export@bjtruckparts.cn', city: 'Guangzhou', taxId: 'CN-BJ-9981', leadTimeDays: 45, notes: 'Bulk shock absorbers & body kits - sea freight' },
+      { name: 'Bujumbura Auto Distrib', contactName: 'Ndori Dieudonné', phone: '+257791002233', email: 'ndori@bujadistrib.bi', city: 'Bujumbura', leadTimeDays: 2, notes: 'Local stock for urgent small parts' },
+    ] as any[];
+    for (const sup of suppliers) {
+      const { country: _c, ...clean } = sup;
+      await prisma.supplier.upsert({ where: { phone: clean.phone }, update: {}, create: clean });
+    }
+    console.log(`✅ Seeded ${suppliers.length} demo suppliers`);
+  } else {
+    console.log(`ℹ️ Suppliers already present (${existingSuppliers}), skipping`);
+  }
+
+  // Seed demo purchases (Phase 5) - only when table is empty
+  const existingPurchases = await prisma.purchase.count({ where: { isDeleted: false } });
+  if (existingPurchases === 0) {
+    const suppliers = await prisma.supplier.findMany({ where: { isDeleted: false } });
+    const supByName = new Map(suppliers.map(su => [su.name, su]));
+    const products = await prisma.product.findMany({ where: { isDeleted: false } });
+    const bySku = new Map(products.map(pr => [pr.sku, pr]));
+
+    const purchaseDefs = [
+      { supplier: 'Mombasa Wholesale', date: '2026-09-01T08:00:00Z', status: 'RECEIVED', payment: 'CASH', invoiceRef: 'MBS-INV-3341', discount: 0,
+        items: [{ sku: 'TYR-1020', q: 6, price: 330000 }] },
+      { supplier: 'Kigali Tyre & Fluids Ltd', date: '2026-09-03T10:30:00Z', status: 'RECEIVED', payment: 'MOBILE_MONEY', invoiceRef: 'KTF-771', discount: 0,
+        items: [{ sku: 'FLD-9002', q: 12, price: 24000 }] },
+      { supplier: 'Toshiba Auto Parts Dar', date: '2026-09-04T07:45:00Z', status: 'RECEIVED', payment: 'CREDIT_30', invoiceRef: 'TAD-2291', discount: 10000, paid: 200000,
+        items: [{ sku: 'BRK-4501', q: 10, price: 42000 }, { sku: 'ENG-2210', q: 20, price: 7500 }] },
+      { supplier: 'Bujumbura Auto Distrib', date: '2026-09-06T13:00:00Z', status: 'RECEIVED', payment: 'CASH', invoiceRef: null, discount: 0,
+        items: [{ sku: 'ELC-7702', q: 20, price: 2800 }, { sku: 'ACC-5510', q: 8, price: 8600 }] },
+      { supplier: 'Beijing Truck Parts Co', date: '2026-09-07T09:15:00Z', status: 'DRAFT', payment: 'CREDIT_30', invoiceRef: 'BJ-QT-1180', discount: 0,
+        items: [{ sku: 'BODY-8811', q: 4, price: 80000 }] },
+      { supplier: 'Mombasa Wholesale', date: '2026-09-08T11:20:00Z', status: 'RECEIVED', payment: 'CASH', invoiceRef: 'MBS-INV-3402', discount: 0,
+        items: [{ sku: 'ENG-2211', q: 15, price: 14000 }] },
+    ];
+
+    let pseq = 1;
+    let papplied = 0;
+    for (const def of purchaseDefs) {
+      const sup = supByName.get(def.supplier);
+      if (!sup) continue;
+      const lines = def.items.map(li => {
+        const pr = bySku.get(li.sku);
+        return {
+          productId: pr?.id ?? null,
+          productName: pr?.name ?? li.sku,
+          sku: li.sku,
+          quantity: li.q,
+          unitPrice: li.price,
+          lineTotal: li.q * li.price,
+        };
+      });
+      const subtotal = lines.reduce((a: number, l: any) => a + l.lineTotal, 0);
+      const discount = Math.min(def.discount || 0, subtotal);
+      const total = subtotal - discount;
+      const status = def.status || 'RECEIVED';
+      const defaultPaid = def.payment === 'CREDIT_30' ? 0 : total;
+      const paid = def.paid === undefined || def.paid === null ? defaultPaid : def.paid;
+
+      await prisma.purchase.create({
+        data: {
+          poNumber: `PO-2026-${String(pseq).padStart(5, '0')}`,
+          supplierId: sup.id,
+          supplierName: sup.name,
+          orderDate: new Date(def.date),
+          status,
+          paymentMethod: def.payment,
+          invoiceRef: def.invoiceRef ?? null,
+          subtotal, discount, taxRate: 0, taxAmount: 0, total,
+          paidAmount: paid, balance: total - paid,
+          items: { create: lines },
+        },
+      });
+
+      if (status === 'RECEIVED') {
+        for (const li of def.items) {
+          const pr = bySku.get(li.sku);
+          if (pr) await prisma.product.update({ where: { id: pr.id }, data: { stockQuantity: { increment: li.q }, purchasePrice: li.price } });
+        }
+      }
+      papplied++;
+      pseq++;
+    }
+    console.log(`✅ Seeded ${papplied} demo purchases (5 received with stock increments + 1 draft order)`);
+  } else {
+    console.log(`ℹ️ Purchases already present (${existingPurchases}), skipping`);
+  }
+
   console.log('🎉 Seed completed successfully!');
 }
 
