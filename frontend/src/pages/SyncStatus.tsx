@@ -80,9 +80,9 @@ export default function SyncStatusPage() {
               <div className="text-xl font-bold text-red-700">{syncStatus.failed}</div>
               <div className="text-xs text-red-600">Failed</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-orange-50 border border-orange-200">
-              <div className="text-xl font-bold text-orange-700">{syncStatus.conflicts}</div>
-              <div className="text-xs text-orange-600">Conflicts</div>
+            <div className="text-center p-3 rounded-xl bg-amber-50 border border-amber-200">
+              <div className="text-xl font-bold text-amber-700">{syncStatus.conflicts}</div>
+              <div className="text-xs text-amber-600">Conflicts</div>
             </div>
           </div>
           <div className="mt-4 flex gap-2">
@@ -163,7 +163,7 @@ export default function SyncStatusPage() {
                         item.status === 'SYNCED' ? 'bg-green-50 text-green-700 border border-green-200' :
                         item.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
                         item.status === 'FAILED' ? 'bg-red-50 text-red-700 border border-red-200' :
-                        'bg-orange-50 text-orange-700 border border-orange-200'
+                        'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
                         {item.status === 'SYNCED' && <CheckCircle className="w-3 h-3" />}
                         {item.status === 'PENDING' && <Clock className="w-3 h-3" />}

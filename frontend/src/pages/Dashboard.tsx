@@ -209,10 +209,10 @@ export default function Dashboard() {
 
   const modules: Array<{ name: string; icon: any; color: string; count: string; sub?: string; desc: string; href: string; implemented?: boolean }> = [
     { name: 'nav.customers', icon: Users, color: 'from-indigo-500 to-purple-500', count: String(stats.customers), desc: 'dash.customersDesc', href: '/customers', implemented: true },
-{ name: 'nav.truckParts', icon: Package, color: 'from-orange-500 to-red-500', count: String(stats.products), sub: stats.lowStock > 0 ? t('dash.lowStock', { n: stats.lowStock }) : undefined, desc: 'dash.partsDesc', href: '/inventory', implemented: true },
+{ name: 'nav.truckParts', icon: Package, color: 'from-green-500 to-emerald-600', count: String(stats.products), sub: stats.lowStock > 0 ? t('dash.lowStock', { n: stats.lowStock }) : undefined, desc: 'dash.partsDesc', href: '/inventory', implemented: true },
     { name: 'dash.salesName', icon: ShoppingCart, color: 'from-sky-500 to-blue-500', count: String(stats.sales), sub: stats.balanceOut > 0 ? t('dash.outstanding', { money: fmtBif(stats.balanceOut) }) : undefined, desc: 'dash.salesDesc', href: '/sales', implemented: true },
     { name: 'dash.purchasesName', icon: PackageCheck, color: 'from-teal-500 to-emerald-500', count: String(stats.purchases), sub: stats.owedOut > 0 ? t('dash.purchasesSub', { money: fmtBif(stats.owedOut) }) : undefined, desc: 'dash.purchasesDesc', href: '/purchases', implemented: true },
-    { name: 'dash.vehiclesName', icon: Truck, color: 'from-amber-500 to-orange-600', count: String(stats.vehicleCount), sub: stats.vehicleInUse > 0 ? t('dash.vehiclesSub', { n: stats.vehicleInUse }) : undefined, desc: 'dash.vehiclesDesc', href: '/vehicles', implemented: true },
+    { name: 'dash.vehiclesName', icon: Truck, color: 'from-lime-500 to-green-600', count: String(stats.vehicleCount), sub: stats.vehicleInUse > 0 ? t('dash.vehiclesSub', { n: stats.vehicleInUse }) : undefined, desc: 'dash.vehiclesDesc', href: '/vehicles', implemented: true },
     { name: 'nav.employees', icon: UserCog, color: 'from-rose-500 to-pink-600', count: String(stats.employeeCount), sub: stats.empPayroll > 0 ? t('dash.empPayroll', { money: fmtBif(stats.empPayroll) }) : undefined, desc: 'dash.employeesDesc', href: '/employees', implemented: true },
 { name: 'dash.invoicesName', icon: FileText, color: 'from-slate-500 to-indigo-600', count: String(stats.invoiceCount), sub: stats.invOutstanding > 0 ? t('dash.invoicesSub', { n: fmtBif(stats.invOutstanding) }) : undefined, desc: 'dash.invoicesDesc', href: '/invoices', implemented: true },
 { name: 'dash.paymentsName', icon: CreditCard, color: 'from-emerald-500 to-green-600', count: fmtBif(stats.payMonth), sub: undefined, desc: 'dash.paymentsDesc', href: '/payments', implemented: true },
@@ -231,7 +231,7 @@ export default function Dashboard() {
             {t('dash.hello', { name: user?.firstName || '' })}
           </h1>
           <p className="text-gray-500 mt-1">
-            Buja Auto Spa ERP • Offline-First Foundation • Gitega, Burundi
+            Buja Auto Spa ERP • Offline-First Foundation • Bujumbura, Burundi
           </p>
         </div>
         
@@ -265,7 +265,7 @@ export default function Dashboard() {
       {/* Architecture Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-gradient-to-br from-[#1A1A2E] to-[#2A2A4E] rounded-2xl p-6 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#FF6B00]/20 to-[#C1272D]/20 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#16A34A]/20 to-[#15803D]/20 rounded-full blur-3xl" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -322,9 +322,9 @@ export default function Dashboard() {
                 <div className="text-lg font-bold text-red-700">{stats.failedSync}</div>
                 <div className="text-xs text-red-600">{t('dash.failedCap')}</div>
               </div>
-              <div className="text-center p-3 rounded-xl bg-orange-50 border border-orange-200">
-                <div className="text-lg font-bold text-orange-700">{stats.conflicts}</div>
-                <div className="text-xs text-orange-600">{t('dash.conflictsCap')}</div>
+              <div className="text-center p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="text-lg font-bold text-amber-700">{stats.conflicts}</div>
+                <div className="text-xs text-amber-600">{t('dash.conflictsCap')}</div>
               </div>
             </div>
 
@@ -360,7 +360,7 @@ export default function Dashboard() {
         {[
           { label: t('dash.cloudUsers'), value: stats.users, icon: Users, change: t('c.synced'), good: true, color: 'bg-blue-500' },
           { label: t('dash.localCache'), value: stats.localUsers, icon: Database, change: t('c.indexed'), good: false, color: 'bg-purple-500' },
-          { label: t('dash.syncQueue'), value: stats.pendingSync + stats.failedSync, icon: RefreshCw, change: stats.pendingSync > 0 ? t('c.pending') : t('sync.clearQueue'), good: stats.pendingSync === 0, color: 'bg-orange-500' },
+          { label: t('dash.syncQueue'), value: stats.pendingSync + stats.failedSync, icon: RefreshCw, change: stats.pendingSync > 0 ? t('c.pending') : t('sync.clearQueue'), good: stats.pendingSync === 0, color: 'bg-amber-500' },
           { label: t('dash.sysHealth'), value: stats.isServerConnected ? '100%' : t('c.offline'), icon: CheckCircle, change: stats.isServerConnected ? t('dash.healthy') : t('dash.localOnly'), good: stats.isServerConnected, color: stats.isServerConnected ? 'bg-green-500' : 'bg-gray-400' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -404,7 +404,7 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 mt-1">{t(mod.desc)}</p>
               <div className={`mt-3 flex items-center justify-between text-xs ${mod.implemented ? 'text-[#C1272D] font-medium' : 'text-gray-400'}`}>
                 <span className="flex items-center gap-1">
-                  {mod.sub ? <AlertTriangle className="w-3 h-3 text-orange-500" /> : <TrendingUp className="w-3 h-3" />}
+                  {mod.sub ? <AlertTriangle className="w-3 h-3 text-amber-500" /> : <TrendingUp className="w-3 h-3" />}
                   {mod.sub || (mod.implemented ? t('dash.openModule') : t('dash.readyImpl'))}
                 </span>
                 {mod.implemented && <span>→</span>}
@@ -480,16 +480,16 @@ export default function Dashboard() {
       </div>
 
       {/* Offline-First Explanation */}
-      <div className="bg-gradient-to-r from-[#FF6B00]/10 to-[#C1272D]/10 border border-orange-200 rounded-2xl p-6">
+      <div className="bg-gradient-to-r from-[#16A34A]/10 to-[#15803D]/10 border border-amber-200 rounded-2xl p-6">
         <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center text-white flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center text-white flex-shrink-0">
             <Database className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-bold text-gray-900">Offline-First Architecture Verified</h3>
             <p className="text-sm text-gray-600 mt-1 leading-relaxed">
               This ERP continues operating when internet is unavailable. Data is stored in <strong>IndexedDB</strong> (not localStorage) via Dexie.js. 
-              Changes are queued with states: <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs">PENDING</span> <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-800 text-xs">SYNCED</span> <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-800 text-xs">FAILED</span> <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-xs">CONFLICT</span>.
+              Changes are queued with states: <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs">PENDING</span> <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-800 text-xs">SYNCED</span> <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-800 text-xs">FAILED</span> <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-xs">CONFLICT</span>.
               Unique IDs (UUID) for all records. Conflict handling with last-write-wins + manual resolution. Try going offline - the app still works!
             </p>
           </div>

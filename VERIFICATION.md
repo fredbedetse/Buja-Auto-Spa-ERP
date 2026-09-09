@@ -1,7 +1,7 @@
 # Buja Auto Spa ERP - Foundation Verification Report
 
 **Date:** 2026-09-09
-**Location:** Gitega, Burundi
+**Location:** Bujumbura, Burundi
 **Status:** ✅ FOUNDATION COMPLETE & VERIFIED
 
 ## Requirements Checklist

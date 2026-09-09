@@ -22,7 +22,7 @@ const syncChip = (status?: string) => {
     case 'FAILED':
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.syncFailed')}</span>;
     case 'CONFLICT':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
     default:
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> {tNow('c.synced')}</span>;
   }
@@ -427,7 +427,7 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">{t('emp.city')}</label>
-                <input className={inputCls} {...field('city')} placeholder="Gitega" />
+                <input className={inputCls} {...field('city')} placeholder="Bujumbura" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">{t('emp.hireDate')}</label>

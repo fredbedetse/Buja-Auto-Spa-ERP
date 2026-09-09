@@ -42,15 +42,15 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-[55%] bg-[#1A1A2E] text-white relative overflow-hidden">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[#FF6B00] rounded-full blur-[100px]" />
+          <div className="absolute top-20 left-20 w-72 h-72 bg-[#16A34A] rounded-full blur-[100px]" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#C1272D] rounded-full blur-[120px]" />
         </div>
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div>
             <div className="flex items-center gap-3 mb-12">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center font-bold text-lg shadow-xl">
-                BA
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center font-bold text-[13px] shadow-xl">
+                BAS
               </div>
               <div>
                 <div className="font-bold text-xl tracking-wide">BUJA AUTO SPA</div>
@@ -60,7 +60,7 @@ export default function Login() {
 
             <h1 className="text-4xl font-bold leading-tight mb-4">
               Offline-First ERP<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B00] to-[#C1272D]">{t('login.builtFor')}</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#16A34A] to-[#15803D]">{t('login.builtFor')}</span>
             </h1>
             <p className="text-white/60 text-lg leading-relaxed max-w-lg">
               Complete business management for truck parts, maintenance, EV & truck rentals, and car wash. Works offline, syncs when online.
@@ -74,7 +74,7 @@ export default function Login() {
                 { icon: Wifi, title: 'PWA Ready', desc: 'Install on any device' },
               ].map((feature) => (
                 <div key={feature.title} className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
-                  <feature.icon className="w-6 h-6 mb-2 text-[#FF6B00]" />
+                  <feature.icon className="w-6 h-6 mb-2 text-[#16A34A]" />
                   <div className="font-medium text-sm">{feature.title}</div>
                   <div className="text-xs text-white/50">{feature.desc}</div>
                 </div>
@@ -90,7 +90,7 @@ export default function Login() {
               <div className="flex items-center gap-2"><Droplets className="w-4 h-4" /> Car Wash</div>
             </div>
             <div className="mt-6 pt-6 border-t border-white/10 text-xs text-white/30">
-              © 2024 Buja Auto Spa - Gitega, Burundi • Offline-First Architecture • v1.0.0 Foundation
+              © 2024 Buja Auto Spa - Bujumbura, Burundi • Offline-First Architecture • v1.0.0 Foundation
             </div>
           </div>
         </div>
@@ -101,8 +101,8 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center font-bold text-white shadow-lg">
-              BA
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center font-bold text-xs text-white shadow-lg">
+              BAS
             </div>
             <div>
               <div className="font-bold text-gray-900">BUJA AUTO SPA</div>
@@ -130,7 +130,7 @@ export default function Login() {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] transition-all text-sm"
                   placeholder="admin@bujaautospa.bi"
                   required
                 />
@@ -143,7 +143,7 @@ export default function Login() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] transition-all text-sm"
+                    className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] transition-all text-sm"
                     placeholder="••••••••"
                     required
                   />
@@ -160,7 +160,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF6B00] to-[#C1272D] text-white font-medium shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#16A34A] to-[#15803D] text-white font-medium shadow-lg shadow-green-700/25 hover:shadow-xl hover:shadow-green-700/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

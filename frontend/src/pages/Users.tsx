@@ -101,7 +101,7 @@ export default function UsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('users.searchPh')}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] text-sm"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] text-sm"
             />
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -133,7 +133,7 @@ export default function UsersPage() {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-6 h-6 border-2 border-gray-200 border-t-[#FF6B00] rounded-full animate-spin" />
+                      <div className="w-6 h-6 border-2 border-gray-200 border-t-[#16A34A] rounded-full animate-spin" />
                       <span className="text-sm text-gray-500">{t('users.loading')}</span>
                     </div>
                   </td>
@@ -149,7 +149,7 @@ export default function UsersPage() {
                   <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center text-white text-sm font-bold">
                           {u.firstName[0]}{u.lastName[0]}
                         </div>
                         <div>
@@ -239,7 +239,7 @@ export default function UsersPage() {
           </p>
           <div className="mt-3 flex gap-2">
             <span className="text-xs px-2 py-1 rounded-full bg-[#1A1A2E] text-white">UUID IDs</span>
-            <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700">Versioning</span>
+            <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Versioning</span>
             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Offline Queue</span>
           </div>
         </div>

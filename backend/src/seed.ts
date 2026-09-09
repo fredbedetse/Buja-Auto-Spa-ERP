@@ -339,7 +339,7 @@ async function seed() {
   if (existingCustomers === 0) {
     const customers = [
       { name: 'Ngabo Transports SARL', contactName: 'Eric Ngabo', phone: '+25779111222', email: 'contact@ngabotransports.bi', customerType: 'COMPANY', city: 'Bujumbura', address: 'Zone Bujumbura Rural, Rohero', notes: 'Fleet of 6 trucks - monthly car wash contract', creditLimit: 5000000 },
-      { name: 'Hakizimana Jean', phone: '+25779222333', customerType: 'INDIVIDUAL', city: 'Gitega', notes: 'Pickup Toyota Hilux 2018', creditLimit: 0 },
+      { name: 'Hakizimana Jean', phone: '+25779222333', customerType: 'INDIVIDUAL', city: 'Bujumbura', notes: 'Pickup Toyota Hilux 2018', creditLimit: 0 },
       { name: 'Niyonsaba Marie', phone: '+25779333444', email: 'niyonsaba.m@gmail.bi', customerType: 'INDIVIDUAL', city: 'Bujumbura', address: 'Kibenga', creditLimit: 0 },
       { name: 'Société BUJA Logistics', contactName: 'Patrick Ndikumana', phone: '+25779444555', customerType: 'COMPANY', city: 'Bujumbura', notes: 'Truck rental + EV charging account', creditLimit: 12000000 },
       { name: 'Bigirimana Emmanuel', phone: '+25779555666', altPhone: '+25768555666', customerType: 'INDIVIDUAL', city: 'Muyinga', notes: 'Regular interior detailing', creditLimit: 0 },
@@ -514,12 +514,12 @@ async function seed() {
   const existingVehicles = await prisma.vehicle.count({ where: { isDeleted: false } });
   if (existingVehicles === 0) {
     const vehicles = [
-      { plateNumber: 'BB 4521 A', type: 'TRUCK', make: 'Hino', model: '500 Series', year: 2018, color: 'White', status: 'IN_USE', odometerKm: 152340, driverName: 'Emmanuel Nkurunziza', driverPhone: '+257792200111', purchaseDate: new Date('2018-03-15'), purchasePrice: 45000000, notes: 'Long-haul Gitega-Dar. Service every 10,000 km.' },
+      { plateNumber: 'BB 4521 A', type: 'TRUCK', make: 'Hino', model: '500 Series', year: 2018, color: 'White', status: 'IN_USE', odometerKm: 152340, driverName: 'Emmanuel Nkurunziza', driverPhone: '+257792200111', purchaseDate: new Date('2018-03-15'), purchasePrice: 45000000, notes: 'Long-haul Bujumbura-Dar. Service every 10,000 km.' },
       { plateNumber: 'BB 7810 A', type: 'TRUCK', make: 'Toyota', model: 'Dyna', year: 2020, color: 'Silver', status: 'AVAILABLE', odometerKm: 98210, purchaseDate: new Date('2020-08-02'), purchasePrice: 28000000, notes: 'Backup hauler - ready to load' },
       { plateNumber: 'AA 1204 C', type: 'TRUCK', make: 'Mitsubishi', model: 'Fuso', year: 2015, color: 'Blue', status: 'IN_MAINTENANCE', odometerKm: 210450, driverName: 'Jean Bosco', driverPhone: '+257793300222', purchaseDate: new Date('2015-01-20'), purchasePrice: 19500000, notes: 'Clutch replacement in bay 2' },
       { plateNumber: 'BB 3399 A', type: 'BUS', make: 'Hyundai', model: 'County', year: 2017, color: 'Yellow', status: 'RENTED', odometerKm: 175300, purchaseDate: new Date('2017-06-10'), purchasePrice: 32000000, notes: 'On 6-month charter to NGO fleet contract' },
       { plateNumber: 'AC 872 B', type: 'MINIBUS', make: 'Toyota', model: 'Hiace', year: 2021, color: 'White', status: 'AVAILABLE', odometerKm: 64230, purchaseDate: new Date('2021-11-05'), purchasePrice: 21000000, notes: 'Airport shuttle - 14 seats' },
-      { plateNumber: 'BD 5510 A', type: 'PICKUP', make: 'Isuzu', model: 'D-Max', year: 2022, color: 'Grey', status: 'IN_USE', odometerKm: 45120, driverName: 'Aline Irakoze', driverPhone: '+257794400333', purchaseDate: new Date('2022-02-18'), purchasePrice: 24500000, notes: 'Parts delivery runs around Gitega' },
+      { plateNumber: 'BD 5510 A', type: 'PICKUP', make: 'Isuzu', model: 'D-Max', year: 2022, color: 'Grey', status: 'IN_USE', odometerKm: 45120, driverName: 'Aline Irakoze', driverPhone: '+257794400333', purchaseDate: new Date('2022-02-18'), purchasePrice: 24500000, notes: 'Parts delivery runs around Bujumbura' },
       { plateNumber: 'AB 777 A', type: 'CAR', make: 'Nissan', model: 'NP200', year: 2011, color: 'Red', status: 'RETIRED', odometerKm: 302800, purchaseDate: new Date('2011-05-30'), purchasePrice: 9000000, isActive: false, notes: 'Engine wear - sold for parts pending' },
     ] as any[];
     for (const vh of vehicles) {
@@ -534,11 +534,11 @@ async function seed() {
   const existingEmployees = await prisma.employee.count({ where: { isDeleted: false } });
   if (existingEmployees === 0) {
     const employees = [
-      { firstName: 'Dieudonn\u00e9', lastName: 'Havyarimana', position: 'DRIVER', phone: '+257791100222', email: 'dieudonne.h@bujaautospa.bi', nationalId: '1000001-A', address: 'Kibenga, Gitega', city: 'Gitega', hireDate: new Date('2016-02-01'), salary: 450000, employmentStatus: 'ACTIVE', notes: 'Long-haul permit C+E. Primary on BB 4521 A.' },
-      { firstName: 'Claudine', lastName: 'Niyongere', position: 'CASHIER', phone: '+257792200333', email: 'claudine.n@bujaautospa.bi', city: 'Gitega', hireDate: new Date('2019-07-15'), salary: 380000, employmentStatus: 'ACTIVE', notes: 'Front desk + car wash counter' },
-      { firstName: 'Eric', lastName: 'Bizimana', position: 'MECHANIC', phone: '+257793300444', nationalId: '1000003-A', city: 'Gitega', hireDate: new Date('2017-03-10'), salary: 600000, employmentStatus: 'ACTIVE', notes: 'Diesel specialist, Hino/Fuso certified' },
-      { firstName: 'Sylvie', lastName: 'Nikwigize', position: 'ACCOUNTANT', phone: '+257794400555', email: 'sylvie.n@bujaautospa.bi', city: 'Gitega', hireDate: new Date('2021-01-04'), salary: 750000, employmentStatus: 'ACTIVE', notes: 'Payroll, supplier reconciliations, OBR filings' },
-      { firstName: 'Jean-Paul', lastName: 'Ndikumana', position: 'WASHER', phone: '+257795500666', city: 'Gitega', hireDate: new Date('2022-09-01'), salary: 220000, employmentStatus: 'ON_LEAVE', notes: 'Family leave until December' },
+      { firstName: 'Dieudonn\u00e9', lastName: 'Havyarimana', position: 'DRIVER', phone: '+257791100222', email: 'dieudonne.h@bujaautospa.bi', nationalId: '1000001-A', address: 'Kibenga, Bujumbura', city: 'Bujumbura', hireDate: new Date('2016-02-01'), salary: 450000, employmentStatus: 'ACTIVE', notes: 'Long-haul permit C+E. Primary on BB 4521 A.' },
+      { firstName: 'Claudine', lastName: 'Niyongere', position: 'CASHIER', phone: '+257792200333', email: 'claudine.n@bujaautospa.bi', city: 'Bujumbura', hireDate: new Date('2019-07-15'), salary: 380000, employmentStatus: 'ACTIVE', notes: 'Front desk + car wash counter' },
+      { firstName: 'Eric', lastName: 'Bizimana', position: 'MECHANIC', phone: '+257793300444', nationalId: '1000003-A', city: 'Bujumbura', hireDate: new Date('2017-03-10'), salary: 600000, employmentStatus: 'ACTIVE', notes: 'Diesel specialist, Hino/Fuso certified' },
+      { firstName: 'Sylvie', lastName: 'Nikwigize', position: 'ACCOUNTANT', phone: '+257794400555', email: 'sylvie.n@bujaautospa.bi', city: 'Bujumbura', hireDate: new Date('2021-01-04'), salary: 750000, employmentStatus: 'ACTIVE', notes: 'Payroll, supplier reconciliations, OBR filings' },
+      { firstName: 'Jean-Paul', lastName: 'Ndikumana', position: 'WASHER', phone: '+257795500666', city: 'Bujumbura', hireDate: new Date('2022-09-01'), salary: 220000, employmentStatus: 'ON_LEAVE', notes: 'Family leave until December' },
       { firstName: 'Aline', lastName: 'Uwimana', position: 'SALESPERSON', phone: '+257796600777', city: 'Bujumbura', hireDate: new Date('2020-05-11'), salary: 420000, employmentStatus: 'TERMINATED', isActive: false, notes: 'Moved abroad - ended on good terms' },
     ] as any[];
     for (const em of employees) {

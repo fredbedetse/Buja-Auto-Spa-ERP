@@ -41,7 +41,7 @@ const syncChip = (status?: string) => {
     case 'FAILED':
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.syncFailed')}</span>;
     case 'CONFLICT':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
     default:
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> {tNow('c.synced')}</span>;
   }
@@ -305,7 +305,7 @@ export default function CustomersPage() {  const { t } = useT();
                 <tr key={c.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${c.customerType === 'COMPANY' ? 'bg-indigo-500' : 'bg-[#FF6B00]'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 ${c.customerType === 'COMPANY' ? 'bg-indigo-500' : 'bg-[#16A34A]'}`}>
                         {c.customerType === 'COMPANY' ? <Building2 className="w-4 h-4" /> : <User className="w-4 h-4" />}
                       </div>
                       <div>
@@ -320,7 +320,7 @@ export default function CustomersPage() {  const { t } = useT();
                   </td>
                   <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{c.city || '—'}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${c.customerType === 'COMPANY' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${c.customerType === 'COMPANY' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                       {c.customerType === 'COMPANY' ? t('cust.company') : t('cust.individual')}
                     </span>
                   </td>
@@ -390,7 +390,7 @@ export default function CustomersPage() {  const { t } = useT();
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.city')}</label>
-                <input className={inputCls} {...field('city')} placeholder="Gitega, Bujumbura, ..." />
+                <input className={inputCls} {...field('city')} placeholder="Bujumbura, Ngozi, ..." />
               </div>
               <div className="sm:col-span-2">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{t('cust.address')}</label>

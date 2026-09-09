@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Buja Auto Spa ERP',
         short_name: 'Buja ERP',
         description: 'Offline-first ERP for Buja Auto Spa - Truck parts, maintenance, rentals, car wash',
-        theme_color: '#C1272D',
+        theme_color: '#16A34A',
         background_color: '#ffffff',
         display: 'standalone',
         scope: '/',

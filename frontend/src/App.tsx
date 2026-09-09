@@ -24,7 +24,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-gray-200 border-t-[#FF6B00] rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-3 border-gray-200 border-t-[#16A34A] rounded-full animate-spin mx-auto mb-3" />
           <div className="text-sm text-gray-500">Loading ERP...</div>
         </div>
       </div>
@@ -44,7 +44,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <div className="w-10 h-10 border-3 border-gray-200 border-t-[#FF6B00] rounded-full animate-spin" />
+        <div className="w-10 h-10 border-3 border-gray-200 border-t-[#16A34A] rounded-full animate-spin" />
       </div>
     );
   }

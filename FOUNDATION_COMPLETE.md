@@ -118,6 +118,6 @@ All using same offline-first pattern: Dexie table + sync queue + API.
 
 ---
 
-**Location:** Gitega, Burundi
+**Location:** Bujumbura, Burundi
 **Date:** 2026-09-09
 **Architecture:** Offline-First ERP - Ready for Production Foundation

@@ -10,7 +10,7 @@ export default function NotImplemented() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center text-white mb-6 shadow-xl">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center text-white mb-6 shadow-xl">
         <Construction className="w-10 h-10" />
       </div>
       <h1 className="text-2xl font-bold text-gray-900 capitalize">{moduleName ? t('ni.module', { name: moduleName }) : t('ni.this')}</h1>

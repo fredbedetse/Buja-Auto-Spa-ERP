@@ -69,7 +69,7 @@ export const dict: Record<string, Entry> = {
   'login.signIn': ['Sign In to ERP', 'Se connecter à l\'ERP'],
   'login.demo': ['Demo Accounts (Foundation)', 'Comptes de démonstration (Fondation)'],
   'login.tagline': ['Offline-capable • IndexedDB • Auto-sync', 'Fonctionne hors ligne • IndexedDB • Auto-sync'],
-  'login.builtFor': ['Built for Gitega', 'Conçu pour Gitega'],
+  'login.builtFor': ['Built for Bujumbura', 'Conçu pour Bujumbura'],
   'login.failed': ['Login failed', 'Échec de connexion'],
 
   // ---- not implemented ----
@@ -83,7 +83,7 @@ export const dict: Record<string, Entry> = {
 
   // ---- dashboard ----
   'dash.hello': ['Welcome, {name} 👋', 'Bienvenue, {name} 👋'],
-  'dash.subtitle': ['Buja Auto Spa ERP • Offline-First Foundation • Gitega, Burundi', 'Buja Auto Spa ERP • Fondation hors ligne • Gitega, Burundi'],
+  'dash.subtitle': ['Buja Auto Spa ERP • Offline-First Foundation • Bujumbura, Burundi', 'Buja Auto Spa ERP • Fondation hors ligne • Bujumbura, Burundi'],
   'dash.cloudConn': ['Cloud Connected', 'Cloud connecté'],
   'dash.localOnly': ['Local Only', 'Local uniquement'],
   'dash.offline': ['Offline', 'Hors ligne'],
@@ -154,7 +154,7 @@ export const dict: Record<string, Entry> = {
   'cust.altPhone': ['Alt phone', 'Tél. alternatif'],
   'cust.email': ['Email', 'E-mail'],
   'cust.city': ['City', 'Ville'],
-  'cust.cityPh': ['Gitega, Bujumbura, ...', 'Gitega, Bujumbura, ...'],
+  'cust.cityPh': ['Bujumbura, Ngozi, ...', 'Bujumbura, Ngozi, ...'],
   'cust.address': ['Address', 'Adresse'],
   'cust.credit': ['Credit limit ({cur})', 'Plafond crédit ({cur})'],
   'cust.notesPh': ['Vehicles, contracts, preferences...', 'Véhicules, contrats, préférences...'],

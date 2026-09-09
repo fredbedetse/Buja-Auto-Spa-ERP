@@ -1,6 +1,6 @@
 # Buja Auto Spa ERP
 
-**Offline-First Enterprise Resource Planning for Gitega, Burundi**
+**Offline-First Enterprise Resource Planning for Bujumbura, Burundi**
 
 Professional ERP for:
 - Truck/Machine parts sales
@@ -346,4 +346,4 @@ All modules will use same offline-first pattern: local IndexedDB + sync queue + 
 Private - Buja Auto Spa
 
 ---
-Built with offline-first principles for reliable operation in Gitega, Burundi.
+Built with offline-first principles for reliable operation in Bujumbura, Burundi.

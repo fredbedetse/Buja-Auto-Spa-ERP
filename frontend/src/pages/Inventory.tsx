@@ -24,7 +24,7 @@ const catColors: Record<string, string> = {
   TYRES: 'bg-gray-100 text-gray-700 border-gray-300',
   BODY: 'bg-purple-50 text-purple-700 border-purple-200',
   ACCESSORIES: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  GENERAL: 'bg-orange-50 text-orange-700 border-orange-200',
+  GENERAL: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const fmtBif = (n: number, currency: 'bif' | 'usd') => fmtMoneyBif(n, currency);
@@ -59,7 +59,7 @@ const syncChip = (status?: string) => {
     case 'FAILED':
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.failed')}</span>;
     case 'CONFLICT':
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200"><AlertTriangle className="w-3 h-3" /> {tNow('c.conflict')}</span>;
     default:
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200"><CheckCircle className="w-3 h-3" /> {tNow('c.synced')}</span>;
   }
@@ -301,9 +301,9 @@ export default function InventoryPage() {  const { t } = useT();
           <div className="flex items-center gap-1.5 text-xs text-gray-400"><Boxes className="w-3.5 h-3.5" /> {t('inv.skus')}</div>
           <div className="text-xl font-bold text-gray-900 mt-0.5">{stats.total}</div>
         </div>
-        <div className={`bg-white rounded-2xl border px-4 py-3 ${stats.low > 0 ? 'border-orange-200 bg-orange-50/40' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400"><AlertTriangle className="w-3.5 h-3.5 text-orange-500" /> {t('inv.low')}</div>
-          <div className="text-xl font-bold text-orange-600 mt-0.5">{stats.low}</div>
+        <div className={`bg-white rounded-2xl border px-4 py-3 ${stats.low > 0 ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200'}`}>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400"><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> {t('inv.low')}</div>
+          <div className="text-xl font-bold text-amber-600 mt-0.5">{stats.low}</div>
         </div>
         <div className={`bg-white rounded-2xl border px-4 py-3 ${stats.out > 0 ? 'border-red-200 bg-red-50/40' : 'border-gray-200'}`}>
           <div className="flex items-center gap-1.5 text-xs text-gray-400"><Package className="w-3.5 h-3.5 text-red-500" /> {t('inv.out')}</div>
@@ -351,7 +351,7 @@ export default function InventoryPage() {  const { t } = useT();
           ))}
           <button
             onClick={() => setOnlyLow(v => !v)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${onlyLow ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${onlyLow ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
           >
             {t('inv.lowOnly')}
           </button>
@@ -403,12 +403,12 @@ export default function InventoryPage() {  const { t } = useT();
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold ${
-                        out ? 'bg-red-100 text-red-700' : low ? 'bg-orange-100 text-orange-700' : 'bg-green-50 text-green-700'
+                        out ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-700' : 'bg-green-50 text-green-700'
                       }`}>
                         {out && <AlertTriangle className="w-3 h-3" />}
                         {pr.stockQuantity} {pr.unit}
                       </span>
-                      {low && !out && <div className="text-[10px] text-orange-500 mt-0.5">reorder at {pr.reorderLevel}</div>}
+                      {low && !out && <div className="text-[10px] text-amber-500 mt-0.5">reorder at {pr.reorderLevel}</div>}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600 hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.purchasePrice, currency)}</td>
                     <td className="px-4 py-3 text-right text-gray-900 font-medium hidden lg:table-cell whitespace-nowrap">{fmtBif(pr.sellingPrice, currency)}</td>

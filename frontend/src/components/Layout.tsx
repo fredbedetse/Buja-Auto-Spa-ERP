@@ -108,8 +108,8 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FF6B00] to-[#C1272D] flex items-center justify-center font-bold text-sm">
-              BA
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#16A34A] to-[#15803D] flex items-center justify-center font-bold text-[10px]">
+              BAS
             </div>
             <div>
               <div className="font-bold text-sm tracking-wide">BUJA AUTO SPA</div>
@@ -152,7 +152,7 @@ export default function Layout() {
             <div className="mt-2 pt-2 border-t border-white/10 flex gap-2 text-[10px]">
               {syncStatus.pending > 0 && <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">{syncStatus.pending} {t('c.pending').toLowerCase()}</span>}
               {syncStatus.failed > 0 && <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">{syncStatus.failed} {t('c.failed').toLowerCase()}</span>}
-              {syncStatus.conflicts > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300">{syncStatus.conflicts} {t('dash.conflictsCap').toLowerCase()}</span>}
+              {syncStatus.conflicts > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">{syncStatus.conflicts} {t('dash.conflictsCap').toLowerCase()}</span>}
             </div>
           )}
         </div>
@@ -167,7 +167,7 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#FF6B00] to-[#C1272D] text-white shadow-lg shadow-orange-500/20'
+                    ? 'bg-gradient-to-r from-[#16A34A] to-[#15803D] text-white shadow-lg shadow-green-700/20'
                     : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`
               }
@@ -230,7 +230,7 @@ export default function Layout() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   placeholder={t('layout.searchSoon')}
-                  className="pl-9 pr-4 py-2 w-80 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] focus:bg-white transition-all"
+                  className="pl-9 pr-4 py-2 w-80 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] focus:bg-white transition-all"
                   disabled
                 />
               </div>
