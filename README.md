@@ -347,6 +347,43 @@ buja-auto-spa-erp/
       replay, 400/404/409 guards, sync conflict semantics, viewer 403s). Regression: payments 38/38
       (modal check made rerun-robust), employees 27/27, cross-module smoke 10/10.
 
+## ✅ Phase 10 Implemented - Maintenance Workshop
+
+- [x] **Maintenance module** (`/maintenance`) - workshop board with work orders (`WO-YYYY-NNNNN`):
+      vehicle (plate + optional fleet-vehicle picker that pre-fills from the Vehicles module),
+      customer, service (Oil & filter, Full service, Brakes, Tyres, Diagnostics, A/C, Coolant,
+      Timing belt), mechanic, priority (Normal/Urgent), planned date and lifecycle
+      (Waiting → In workshop → Done, plus Cancelled tombstones when pulled off the board).
+- [x] **Parts from real inventory**: each job can carry part lines picked from the Products module.
+      Unit prices are snapshotted server-side at write time (clients can only send productId + qty,
+      so money can never be forged), and the parts editor doubles as an in-job growth editor:
+      adding qty mid-job consumes only the difference, removing returns stock.
+- [x] **Reservation semantics**: parts stay "planned" while a job waits and are consumed from
+      stock the moment the job starts (`INSUFFICIENT_STOCK` 409 stops a start/quantity bump the
+      shop can't cover). Deleting an open job puts its reserved parts back on the shelf; completed
+      jobs are final (`MAINT_COMPLETED` 409 blocks reopens, part edits and deletes) because their
+      consumption is already revenue history.
+- [x] **Labor catalog** (`/api/maintenance/catalog`): service hours × 20,000 BIF/shop-hour,
+      rounded to the nearest 100; discounts clamp at labor+parts gross.
+- [x] **Scheduling pressure at a glance**: stats expose due-soon (3-day window) and overdue counts;
+      the board flags overdue planned dates in red and urgent jobs with a badge.
+- [x] **Offline-first**: Dexie v10 `maintenanceOrders`; sync push CREATE mints the canonical
+      WO number and replays server-side parts pricing + stock reservation (missing parts degrade
+      to warnings instead of dead-lettering the queue), UPDATE honors version conflicts
+      (SERVER_WINS adoption on the client), DELETE tombstones and releases; pull streams rows back.
+      Creating, editing, starting and completing all work with the network off - `TMP-WO-` rows
+      self-heal on sync.
+- [x] **RBAC**: `maintenance:read` / `maintenance:manage` (already granted to Manager/Mechanic
+      roles - no schema changes); Viewer and cashier-side 403s verified. Dashboard gains the 10th
+      live card (open count + overdue alert) and the module chip reads "10 modules live".
+- [x] QA: Playwright suite 32/32 (seed math incl. the 283,000 → 280,000 discount line, due/overdue
+      card, search & status filters, parts picker with server money truth, reservation-on-start
+      stock deltas, mid-job edit + discount clamp, complete-with-cheque-and-findings, board
+      removal, full offline create → canonical swap, USD $75.83, FR labels, zero console errors)
+      + curl contract suite (catalog, idempotent replay, 400/404/409 guards, sync conflict +
+      completed-dropped + delete-FAILED semantics, pull stream, viewer 403s).
+      Regression: payments 38/38, employees 27/27, wash 31/31, brand 8/8, smoke 10/10.
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -358,7 +395,7 @@ After foundation verification:
 - ~~Employees / Payroll~~ (completed in Phase 7)
 - ~~Invoices / Payments~~ (completed in Phase 8)
 - ~~Car Wash~~ (completed in Phase 9)
-- Maintenance
+- ~~Maintenance~~ (completed in Phase 10)
 - EV Rentals / Truck Rentals
 - Reports
 

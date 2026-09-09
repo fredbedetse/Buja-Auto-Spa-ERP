@@ -489,6 +489,47 @@ model Payment {
   @@index([updatedAt])
 }
 
+model MaintenanceOrder {
+  id            String    @id @default(uuid())
+  orderNo       String    @unique // WO-YYYY-NNNNN, server-assigned (TMP-WO-xxx while offline)
+  vehicleId     String?   // optional link to a Vehicle row
+  vehiclePlate  String    // denormalized so orders work offline
+  vehicleLabel  String?   // make/model snapshot for display
+  customerName  String?
+  customerPhone String?
+  serviceType   String    @default("OIL") // OIL | FULL | BRAKES | TIRES | DIAG | AC | COOLANT | BELT
+  status        String    @default("WAITING") // WAITING | IN_PROGRESS | COMPLETED | CANCELLED
+  priority      String    @default("NORMAL") // NORMAL | URGENT
+  mechanicName  String?
+  scheduledFor  DateTime? // planned service date
+  startedAt     DateTime?
+  completedAt   DateTime?
+  laborHours    Float     @default(0) // catalog snapshot
+  laborTotal    Float     @default(0) // BIF
+  partsTotal    Float     @default(0) // BIF, from snapshot lines
+  discount      Float     @default(0) // BIF, clamped to gross
+  totalAmount   Float     @default(0) // canonical BIF
+  paidAmount    Float     @default(0)
+  paymentMethod String?   // CASH | MOBILE_MONEY | BANK_TRANSFER | CHEQUE
+  notes         String?
+  findings      String?   // mechanic notes captured at completion
+  partsJson     String    @default("[]") // [{productId, sku, name, qty, unitPrice, lineTotal}]
+
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  deviceId      String?
+  isDeleted     Boolean   @default(false)
+
+  @@index([status])
+  @@index([orderNo])
+  @@index([vehiclePlate])
+  @@index([scheduledFor])
+  @@index([completedAt])
+  @@index([updatedAt])
+}
+
 model CarWashOrder {
   id            String    @id @default(uuid())
   orderNo       String    @unique // WSH-YYYY-NNNNN, server-assigned (TMP-WSH-xxx while offline)

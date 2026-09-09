@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { priceWash } from './lib/washCatalog';
 import { nextWashOrderNo } from './routes/carwash';
+import { priceMaint } from './lib/maintCatalog';
+import { nextMaintOrderNo } from './routes/maintenance';
 import prisma from './lib/prisma';
 
 async function seed() {
@@ -570,6 +572,70 @@ async function seed() {
     console.log(`Seeded ${vehicles.length} demo vehicles`);
   } else {
     console.log(`Vehicles already present (${existingVehicles}), skipping`);
+  }
+
+  // Seed demo maintenance work orders (Phase 10) - only when table is empty
+  const existingMaint = await prisma.maintenanceOrder.count();
+  if (existingMaint === 0) {
+    const prodBySku = new Map((await prisma.product.findMany({ where: { isDeleted: false } })).map(p => [p.sku, p]));
+    const mkLine = (sku: string, qty: number) => {
+      const p = prodBySku.get(sku)!;
+      return { productId: p.id, sku, name: p.name, qty, unitPrice: p.sellingPrice, lineTotal: qty * p.sellingPrice };
+    };
+    const DAY = 86400000;
+    const nowMs = Date.now();
+    const maintDefs = [
+      { plate: 'BB 4521 A', svc: 'FULL', status: 'COMPLETED', prio: 'NORMAL', mech: 'Eric Bizimana', disc: 3000,
+        parts: [{ sku: 'ENG-2210', q: 1 }, { sku: 'ENG-2211', q: 1 }, { sku: 'FLD-9001', q: 1 }],
+        cust: 'Fleet Ops (Bujumbura-Dar)', phone: null, notes: '10,000 km interval service', findings: 'Replaced filters + full oil change. Injectors within spec.',
+        startedAt: new Date(nowMs - 4 * 3600000), completedAt: new Date(nowMs - 2 * 3600000), paid: 'MOBILE_MONEY' },
+      { plate: 'AA 1204 C', svc: 'BRAKES', status: 'COMPLETED', prio: 'URGENT', mech: 'Eric Bizimana', disc: 0,
+        parts: [{ sku: 'BRK-4501', q: 1 }],
+        cust: 'Fleet Ops', phone: null, notes: 'Clutch replacement in bay 2', findings: 'New Dyna pad set + adjusted slack.',
+        startedAt: new Date(nowMs - 4 * DAY), completedAt: new Date(nowMs - 3 * DAY), paid: 'BANK_TRANSFER' },
+      { plate: 'BD 5510 A', svc: 'AC', status: 'IN_PROGRESS', prio: 'URGENT', mech: 'Eric Bizimana', disc: 0,
+        parts: [],
+        cust: 'Aline Irakoze', phone: '+257794400333', notes: 'No cold air on airport runs', findings: null,
+        startedAt: new Date(nowMs - 3600000), completedAt: null, paid: null },
+      { plate: 'AC 872 B', svc: 'OIL', status: 'WAITING', prio: 'NORMAL', mech: null, disc: 0,
+        parts: [{ sku: 'ENG-2210', q: 1 }],
+        cust: 'Airport Shuttle Ltd', phone: '+257798800444', notes: 'Scheduled PM service', findings: null,
+        scheduledFor: new Date(nowMs + DAY), startedAt: null, completedAt: null, paid: null },
+      { plate: 'BB 3399 A', svc: 'DIAG', status: 'WAITING', prio: 'URGENT', mech: null, disc: 0,
+        parts: [],
+        cust: 'NGO Charter Desk', phone: null, notes: 'Gearbox noise reported by charterer', findings: null,
+        scheduledFor: new Date(nowMs - 2 * DAY), startedAt: null, completedAt: null, paid: null },
+    ] as any[];
+    for (const md of maintDefs) {
+      const veh = await prisma.vehicle.findFirst({ where: { plateNumber: md.plate, isDeleted: false } });
+      const rows = md.parts.map((pl: any) => mkLine(pl.sku, pl.q));
+      const partsTotal = rows.reduce((sum: number, r: any) => sum + r.lineTotal, 0);
+      const px = priceMaint(md.svc, partsTotal, md.disc || 0);
+      const consuming = md.status === 'IN_PROGRESS' || md.status === 'COMPLETED';
+      if (consuming) {
+        for (const r of rows) {
+          await prisma.product.update({ where: { id: r.productId }, data: { stockQuantity: { decrement: r.qty }, updatedAt: new Date() } }).catch(() => undefined);
+        }
+      }
+      await prisma.maintenanceOrder.create({
+        data: {
+          orderNo: await nextMaintOrderNo(prisma),
+          vehicleId: veh?.id || null, vehiclePlate: md.plate, vehicleLabel: veh ? `${veh.make} ${veh.model || ''}`.trim() : null,
+          customerName: md.cust, customerPhone: md.phone,
+          serviceType: md.svc, priority: md.prio, status: md.status,
+          mechanicName: md.mech, notes: md.notes, findings: md.findings,
+          scheduledFor: md.scheduledFor || null, startedAt: md.startedAt || null, completedAt: md.completedAt || null,
+          laborHours: px.laborHours, laborTotal: px.laborTotal, partsTotal, discount: px.discount, totalAmount: px.total,
+          paidAmount: md.status === 'COMPLETED' ? px.total : 0,
+          paymentMethod: md.paid || null,
+          partsJson: JSON.stringify(rows),
+          lastSyncedAt: new Date(),
+        },
+      });
+    }
+    console.log('Seeded 5 demo maintenance work orders');
+  } else {
+    console.log(`Maintenance work orders already present (${existingMaint}), skipping`);
   }
 
   // Seed demo employees (Phase 7) - only when table is empty

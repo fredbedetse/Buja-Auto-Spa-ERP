@@ -14,6 +14,7 @@ import EmployeesPage from './pages/Employees';
 import InvoicesPage from './pages/Invoices';
 import PaymentsPage from './pages/Payments';
 import CarWashPage from './pages/CarWash';
+import MaintenancePage from './pages/Maintenance';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -87,7 +88,7 @@ export default function App() {
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="expenses" element={<NotImplemented />} />
-          <Route path="maintenance" element={<NotImplemented />} />
+          <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="ev-rentals" element={<NotImplemented />} />
           <Route path="truck-rentals" element={<NotImplemented />} />
           <Route path="reports" element={<NotImplemented />} />

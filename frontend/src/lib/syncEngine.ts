@@ -212,6 +212,12 @@ class SyncEngine {
                 if (result.version) upd.version = result.version;
                 if ((result as any).orderNo) upd.orderNo = (result as any).orderNo;
                 await localDB.washOrders.update(result.entityId, upd);
+              } else if (result.entityType === 'MaintenanceOrder') {
+                // Server assigned the canonical WO number and recomputed parts money
+                const upd: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) upd.version = result.version;
+                if ((result as any).orderNo) upd.orderNo = (result as any).orderNo;
+                await localDB.maintenanceOrders.update(result.entityId, upd);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -408,6 +414,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.washOrders.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'MaintenanceOrder') {
+            if (change.operation === 'DELETE') {
+              await localDB.maintenanceOrders.delete(change.entityId);
+            } else {
+              const existing = await localDB.maintenanceOrders.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.maintenanceOrders.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'Payment') {
@@ -682,6 +700,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'CarWashOrder') {
           await localDB.washOrders.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'MaintenanceOrder') {
+          await localDB.maintenanceOrders.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

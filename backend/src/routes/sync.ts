@@ -4,6 +4,9 @@ import prisma from '../lib/prisma';
 import { nextPaymentNo } from '../routes/payments';
 import { nextWashOrderNo } from '../routes/carwash';
 import { priceWash } from '../lib/washCatalog';
+import { priceMaint } from '../lib/maintCatalog';
+import { buildMaintLines, linesTotal, tryApplyMaintStock, parseLines, diffStock } from '../lib/maintStock';
+import { nextMaintOrderNo } from '../routes/maintenance';
 import { buildSaleTxn } from './sales';
 import { buildPurchaseTxn } from './purchases';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -826,6 +829,124 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'MaintenanceOrder') {
+          const existing = await prisma.maintenanceOrder.findUnique({ where: { id: entityId } });
+          const mconsuming = (st: string) => st === 'IN_PROGRESS' || st === 'COMPLETED';
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version, orderNo: existing.orderNo });
+              continue;
+            }
+            const { id: _mid, orderNo: _mno, deviceId: _md, version: _mv, ...mRest } = data || {};
+            if (!mRest.vehiclePlate) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Vehicle plate required' });
+              continue;
+            }
+            const { rows, warnings: mWarn } = await buildMaintLines(Array.isArray(mRest.partsLines) ? mRest.partsLines : []);
+            const mPartsTotal = linesTotal(rows);
+            const mp = priceMaint(mRest.serviceType || 'OIL', mPartsTotal, mRest.discount || 0);
+            const mstatus = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(mRest.status) ? mRest.status : 'WAITING';
+            if (mconsuming(mstatus)) mWarn.push(...await tryApplyMaintStock(rows, +1));
+            const orderNo = await nextMaintOrderNo();
+            try {
+              const created = await prisma.maintenanceOrder.create({
+                data: {
+                  id: entityId, orderNo,
+                  vehicleId: mRest.vehicleId || null,
+                  vehiclePlate: String(mRest.vehiclePlate).toUpperCase(),
+                  vehicleLabel: mRest.vehicleLabel || null,
+                  customerName: mRest.customerName || null, customerPhone: mRest.customerPhone || null,
+                  serviceType: ['OIL', 'FULL', 'BRAKES', 'TIRES', 'DIAG', 'AC', 'COOLANT', 'BELT'].includes(mRest.serviceType) ? mRest.serviceType : 'OIL',
+                  priority: ['NORMAL', 'URGENT'].includes(mRest.priority) ? mRest.priority : 'NORMAL',
+                  scheduledFor: mRest.scheduledFor ? new Date(mRest.scheduledFor) : null,
+                  mechanicName: mRest.mechanicName || null, notes: mRest.notes || null, findings: mRest.findings || null,
+                  laborHours: mp.laborHours, laborTotal: mp.laborTotal, partsTotal: mPartsTotal, discount: mp.discount, totalAmount: mp.total,
+                  paidAmount: mstatus === 'COMPLETED' ? mp.total : 0,
+                  paymentMethod: mRest.paymentMethod || (mstatus === 'COMPLETED' ? 'CASH' : null),
+                  status: mstatus,
+                  startedAt: mconsuming(mstatus) ? new Date(mRest.startedAt || Date.now()) : null,
+                  completedAt: mstatus === 'COMPLETED' ? new Date(mRest.completedAt || Date.now()) : null,
+                  partsJson: JSON.stringify(rows),
+                  lastSyncedAt: new Date(), deviceId,
+                },
+              });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: 1, orderNo: created.orderNo, ...(mWarn.length ? { warnings: mWarn } : {}) });
+            } catch (e: any) {
+              results.push({ entityType, entityId, status: 'FAILED', error: e?.code === 'P2002' ? 'Work order number race - retry' : 'Create failed' });
+            }
+
+          } else if (operation === 'UPDATE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'FAILED', error: existing ? 'Removed server-side' : 'Work order not found on server' });
+              continue;
+            }
+            const clientV = data?.version ?? clientVersion ?? version;
+            if (clientV !== undefined && clientV !== null && existing.version !== clientV) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+            if (existing.status === 'COMPLETED') {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version });
+              continue; // completed jobs are final - offline edits are dropped
+            }
+            const d = data || {};
+            const oldMLines = parseLines(existing.partsJson);
+            const upd: any = { lastSyncedAt: new Date(), deviceId, version: { increment: 1 } };
+            for (const k of ['customerName', 'customerPhone', 'mechanicName', 'notes', 'findings', 'paymentMethod', 'serviceType', 'priority', 'status', 'vehicleLabel', 'vehicleId']) {
+              if (d[k] !== undefined) upd[k] = d[k];
+            }
+            if (d.vehiclePlate) upd.vehiclePlate = String(d.vehiclePlate).toUpperCase();
+            if (d.scheduledFor !== undefined) upd.scheduledFor = d.scheduledFor ? new Date(d.scheduledFor) : null;
+            let newMLines = oldMLines;
+            const mWarn: string[] = [];
+            if (Array.isArray(d.partsLines)) {
+              const built = await buildMaintLines(d.partsLines);
+              newMLines = built.rows; mWarn.push(...built.warnings);
+              upd.partsJson = JSON.stringify(newMLines);
+              upd.partsTotal = linesTotal(newMLines);
+            }
+            const nextMStatus = upd.status || existing.status;
+            const mPartsTotal = upd.partsTotal !== undefined ? upd.partsTotal : existing.partsTotal;
+            if (d.discount !== undefined || d.serviceType || upd.partsTotal !== undefined) {
+              const px = priceMaint(d.serviceType || existing.serviceType, mPartsTotal, d.discount !== undefined ? d.discount : existing.discount);
+              upd.laborHours = px.laborHours; upd.laborTotal = px.laborTotal; upd.discount = px.discount; upd.totalAmount = px.total;
+            }
+            const mDiff = diffStock(oldMLines, newMLines, mconsuming(existing.status), mconsuming(nextMStatus));
+            if (mDiff.consume.length) mWarn.push(...await tryApplyMaintStock(mDiff.consume, +1));
+            if (mDiff.release.length) await tryApplyMaintStock(mDiff.release, -1);
+            if (nextMStatus === 'IN_PROGRESS' && !existing.startedAt) upd.startedAt = new Date(d.startedAt || Date.now());
+            if (nextMStatus === 'COMPLETED' && existing.status !== 'COMPLETED') {
+              upd.completedAt = new Date(d.completedAt || Date.now());
+              const effTotal = upd.totalAmount ?? existing.totalAmount;
+              upd.paidAmount = d.paidAmount !== undefined ? Math.min(d.paidAmount, effTotal) : effTotal;
+              if (!d.paymentMethod) upd.paymentMethod = existing.paymentMethod || 'CASH';
+            }
+            const updated = await prisma.maintenanceOrder.update({ where: { id: entityId }, data: upd });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version, ...(mWarn.length ? { warnings: mWarn } : {}) });
+
+          } else if (operation === 'DELETE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already removed' });
+              continue;
+            }
+            if (existing.status === 'COMPLETED') {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Completed work orders stay on the revenue record' });
+              continue;
+            }
+            if (mconsuming(existing.status) && !existing.isDeleted) {
+              await tryApplyMaintStock(parseLines(existing.partsJson), -1); // planned parts go back on the shelf
+            }
+            if (!existing.isDeleted) {
+              await prisma.maintenanceOrder.update({ where: { id: entityId }, data: { isDeleted: true, status: 'CANCELLED', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            }
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Employee') {
           const existing = await prisma.employee.findUnique({ where: { id: entityId } });
 
@@ -1213,6 +1334,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: w,
         version: w.version,
         timestamp: w.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('MaintenanceOrder')) {
+      const jobs = await prisma.maintenanceOrder.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...jobs.map(m => ({
+        entityType: 'MaintenanceOrder',
+        entityId: m.id,
+        operation: 'UPDATE',
+        data: { ...m, partsLines: parseLines(m.partsJson) },
+        version: m.version,
+        timestamp: m.updatedAt.toISOString(),
       })));
     }
 

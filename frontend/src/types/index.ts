@@ -195,6 +195,46 @@ export interface Vehicle {
   syncStatus?: SyncStatus;
 }
 
+export interface MaintPartLine {
+  productId: string;
+  sku: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface MaintenanceOrder {
+  id: string;
+  orderNo: string; // canonical WO-YYYY-NNNNN (TMP-WO-xxx while offline)
+  vehicleId?: string | null;
+  vehiclePlate: string;
+  vehicleLabel?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  serviceType: string; // OIL | FULL | BRAKES | TIRES | DIAG | AC | COOLANT | BELT
+  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  priority: 'NORMAL' | 'URGENT';
+  mechanicName?: string | null;
+  scheduledFor?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  laborHours: number;
+  laborTotal: number; // canonical BIF
+  partsTotal: number;
+  discount: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentMethod?: string | null;
+  notes?: string | null;
+  findings?: string | null;
+  partsLines: MaintPartLine[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus?: SyncStatus;
+}
+
 export interface WashOrder {
   id: string;
   orderNo: string; // canonical WSH-YYYY-NNNNN (TMP-WSH-xxx while offline)

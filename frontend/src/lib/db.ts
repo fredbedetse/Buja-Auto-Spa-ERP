@@ -1,7 +1,10 @@
 // Offline-first local database using Dexie (IndexedDB)
 // This is the primary offline storage, NOT localStorage
 import Dexie, { type Table } from 'dexie';
-import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, Payment, Invoice, WashOrder, SyncStatus, SyncQueueItem, SyncMetadata } from '../types';
+import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, Payment, Invoice, WashOrder, SyncStatus, SyncQueueItem, SyncMetadata,
+  MaintenanceOrder,
+  MaintPartLine,
+} from '../types';
 
 export interface LocalUser extends User {
   _localId?: string;
@@ -41,6 +44,11 @@ export interface LocalEmployee extends Employee {
 }
 
 export interface LocalWashOrder extends WashOrder {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
+export interface LocalMaintenanceOrder extends MaintenanceOrder {
   syncStatus?: SyncStatus;
   _dirty?: boolean;
 }
@@ -88,6 +96,7 @@ class BujaLocalDB extends Dexie {
   payments!: Table<LocalPayment, string>;
   invoices!: Table<LocalInvoice, string>;
   washOrders!: Table<LocalWashOrder, string>;
+  maintenanceOrders!: Table<LocalMaintenanceOrder, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -147,6 +156,11 @@ class BujaLocalDB extends Dexie {
     // Version 9 - Car wash orders (Phase 9)
     this.version(9).stores({
       washOrders: 'id, orderNo, status, vehiclePlate, bay, updatedAt, syncStatus',
+    });
+
+    // Version 10 - Maintenance work orders (Phase 10)
+    this.version(10).stores({
+      maintenanceOrders: 'id, orderNo, status, vehiclePlate, scheduledFor, updatedAt, syncStatus',
     });
   }
 

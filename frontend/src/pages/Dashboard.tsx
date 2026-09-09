@@ -30,6 +30,9 @@ interface SystemStats {
   empPayroll: number;
   washTotal: number;
   washRevenueToday: number;
+  maintTotal: number;
+  maintRevenueToday: number;
+  maintOverdue: number;
   invoiceCount: number;
   invOutstanding: number;
   payMonth: number;
@@ -62,6 +65,9 @@ export default function Dashboard() {
     empPayroll: 0,
     washTotal: 0,
     washRevenueToday: 0,
+    maintTotal: 0,
+    maintRevenueToday: 0,
+    maintOverdue: 0,
     invoiceCount: 0,
     invOutstanding: 0,
     payMonth: 0,
@@ -122,6 +128,9 @@ export default function Dashboard() {
         let serverEmpPayroll: number | null = null;
         let serverWashTotal: number | null = null;
         let serverWashRev: number | null = null;
+        let serverMaintTotal: number | null = null;
+        let serverMaintRev: number | null = null;
+        let serverMaintOverdue: number | null = null;
         let serverInvoices: number | null = null;
         let serverInvOut: number | null = null;
         let serverPayMonth: number | null = null;
@@ -146,6 +155,7 @@ export default function Dashboard() {
         serverEmployees = serverEmpPayroll = null;
         serverInvoices = serverInvOut = serverPayMonth = null;
         serverWashTotal = serverWashRev = null;
+        serverMaintTotal = serverMaintRev = serverMaintOverdue = null;
         try {
           const vstats = await apiClient.get<any>('/vehicles/stats');
           serverVehicles = vstats.total ?? null;
@@ -169,6 +179,16 @@ export default function Dashboard() {
         } catch {
           serverWashTotal = null;
           serverWashRev = null;
+        }
+        try {
+          const mstat = await apiClient.get<any>('/maintenance/stats');
+          serverMaintTotal = mstat.total ?? null;
+          serverMaintRev = mstat.revenueToday ?? null;
+          serverMaintOverdue = mstat.overdue ?? null;
+        } catch {
+          serverMaintTotal = null;
+          serverMaintRev = null;
+          serverMaintOverdue = null;
         }
         try {
           const istat = await apiClient.get<any>('/invoices/stats');
@@ -205,6 +225,9 @@ export default function Dashboard() {
           empPayroll: serverEmpPayroll ?? 0,
           washTotal: serverWashTotal ?? (await localDB.washOrders.count()),
           washRevenueToday: serverWashRev ?? 0,
+          maintTotal: serverMaintTotal ?? (await localDB.maintenanceOrders.count()),
+          maintRevenueToday: serverMaintRev ?? 0,
+          maintOverdue: serverMaintOverdue ?? 0,
           invoiceCount: serverInvoices ?? (await localDB.sales.count()),
           invOutstanding: serverInvOut ?? 0,
           payMonth: serverPayMonth ?? 0,
@@ -233,8 +256,8 @@ export default function Dashboard() {
     { name: 'nav.employees', icon: UserCog, color: 'from-rose-500 to-pink-600', count: String(stats.employeeCount), sub: stats.empPayroll > 0 ? t('dash.empPayroll', { money: fmtBif(stats.empPayroll) }) : undefined, desc: 'dash.employeesDesc', href: '/employees', implemented: true },
 { name: 'dash.invoicesName', icon: FileText, color: 'from-slate-500 to-indigo-600', count: String(stats.invoiceCount), sub: stats.invOutstanding > 0 ? t('dash.invoicesSub', { n: fmtBif(stats.invOutstanding) }) : undefined, desc: 'dash.invoicesDesc', href: '/invoices', implemented: true },
 { name: 'dash.paymentsName', icon: CreditCard, color: 'from-emerald-500 to-green-600', count: fmtBif(stats.payMonth), sub: undefined, desc: 'dash.paymentsDesc', href: '/payments', implemented: true },
-{ name: 'nav.maintenance', icon: Wrench, color: 'from-blue-500 to-cyan-500', count: 'Soon', desc: 'dash.maintDesc', href: '/maintenance' },
     { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-green-600', count: String(stats.washTotal), sub: stats.washRevenueToday > 0 ? t('dash.washSub', { money: fmtBif(stats.washRevenueToday) }) : undefined, desc: 'dash.washDesc', href: '/carwash', implemented: true },
+        { name: 'nav.maintenance', icon: Wrench, color: 'from-sky-500 to-[#16A34A]', count: String(stats.maintTotal), sub: stats.maintOverdue > 0 ? t('dash.maintOverdue', { n: stats.maintOverdue }) : (stats.maintRevenueToday > 0 ? t('dash.maintSub', { money: fmtBif(stats.maintRevenueToday) }) : undefined), desc: 'dash.maintDesc', href: '/maintenance', implemented: true },
     { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
     { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'dash.truckDesc', href: '/truck-rentals' },
 ];
@@ -404,7 +427,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 9 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 10 })}</span>
           </span>
         </div>
         
