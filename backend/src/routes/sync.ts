@@ -7,6 +7,8 @@ import { priceWash } from '../lib/washCatalog';
 import { priceMaint } from '../lib/maintCatalog';
 import { buildMaintLines, linesTotal, tryApplyMaintStock, parseLines, diffStock } from '../lib/maintStock';
 import { nextMaintOrderNo } from '../routes/maintenance';
+import { priceBooking, overtimeFee, rentalDays } from '../lib/rentalCatalog';
+import { nextBookingNo } from '../routes/rentals';
 import { buildSaleTxn } from './sales';
 import { buildPurchaseTxn } from './purchases';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -947,6 +949,139 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'RentalBooking') {
+          const existing = await prisma.rentalBooking.findUnique({ where: { id: entityId } });
+          const midnightM = (v: any) => new Date(new Date(v).setUTCHours(0, 0, 0, 0));
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version, bookingNo: existing.bookingNo });
+              continue;
+            }
+            const { id: _rid, bookingNo: _rno, deviceId: _rd, version: _rv, ...rRest } = data || {};
+            if (!rRest.unitId || !rRest.customerName || !rRest.startDate || !rRest.endDate) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Unit, customer and dates required' });
+              continue;
+            }
+            const unit = await prisma.rentalUnit.findFirst({ where: { id: rRest.unitId, isDeleted: false } });
+            if (!unit) { results.push({ entityType, entityId, status: 'FAILED', error: 'Rental unit not found on server' }); continue; }
+            const cls = unit.fleetClass;
+            const start = midnightM(rRest.startDate), end = midnightM(rRest.endDate);
+            if (end < start) { results.push({ entityType, entityId, status: 'FAILED', error: 'End date precedes start' }); continue; }
+            const openWhere: any = { unitId: unit.id, isDeleted: false, status: { in: ['PENDING', 'ACTIVE'] }, startDate: { lte: end }, endDate: { gte: start } };
+            if (existing && !existing.isDeleted) openWhere.id = { not: existing.id };
+            const clash = await prisma.rentalBooking.findFirst({ where: openWhere });
+            if (clash && clash.id !== entityId) {
+              results.push({ entityType, entityId, status: 'FAILED', error: `Unit booked ${clash.bookingNo} meanwhile`, code: 'UNIT_BOOKED' });
+              continue;
+            }
+            const px = priceBooking(unit.unitType, start, end, !!rRest.insurance);
+            const rstatus = ['ACTIVE', 'RETURNED'].includes(rRest.status) ? rRest.status : 'PENDING';
+            let rt: Date | null = null;
+            let overtime = 0;
+            if (rstatus === 'ACTIVE' || rstatus === 'RETURNED') rt = rRest.startedAt ? new Date(rRest.startedAt) : new Date();
+            if (rstatus === 'RETURNED') {
+              rt = rt || new Date();
+              const retAt = rRest.returnedAt ? new Date(rRest.returnedAt) : new Date();
+              overtime = overtimeFee(px.dailyRate, end, retAt);
+            }
+            const total = px.totalAmount + overtime;
+            const bookingNo = await nextBookingNo(cls);
+            try {
+              const created = await prisma.rentalBooking.create({
+                data: {
+                  id: entityId, bookingNo, fleetClass: cls, unitId: unit.id, unitName: unit.name, unitPlate: unit.plate,
+                  customerName: String(rRest.customerName), customerPhone: rRest.customerPhone || null,
+                  startDate: start, endDate: end, status: rstatus, insurance: !!rRest.insurance,
+                  dailyRate: px.dailyRate, days: px.days, rentAmount: px.rentAmount, discount: px.discount,
+                  insuranceTotal: px.insuranceTotal, overtimeFee: overtime, totalAmount: total,
+                  depositAmount: px.deposit, depositRefunded: !!rRest.depositRefunded,
+                  paidAmount: rstatus === 'PENDING' ? 0 : total,
+                  paymentMethod: rstatus === 'PENDING' ? null : (rRest.paymentMethod || 'CASH'),
+                  mileageOut: rRest.mileageOut ?? null, mileageReturn: rRest.mileageReturn ?? null,
+                  returnLevel: rRest.returnLevel ?? null, damageNotes: rRest.damageNotes || null, notes: rRest.notes || null,
+                  startedAt: rstatus === 'PENDING' ? null : rt,
+                  returnedAt: rstatus === 'RETURNED' ? (rRest.returnedAt ? new Date(rRest.returnedAt) : new Date()) : null,
+                  lastSyncedAt: new Date(), deviceId,
+                },
+              });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: 1, bookingNo: created.bookingNo });
+            } catch (e: any) {
+              results.push({ entityType, entityId, status: 'FAILED', error: e?.code === 'P2002' ? 'Booking number race - retry' : 'Create failed' });
+            }
+
+          } else if (operation === 'UPDATE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'FAILED', error: existing ? 'Removed server-side' : 'Booking not found on server' });
+              continue;
+            }
+            const clientV = data?.version ?? clientVersion ?? version;
+            if (clientV !== undefined && clientV !== null && existing.version !== clientV) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+            if (existing.status === 'RETURNED') {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version });
+              continue; // returned rentals are final - offline edits are dropped
+            }
+            const d = data || {};
+            const upd: any = { lastSyncedAt: new Date(), deviceId, version: { increment: 1 } };
+            for (const k of ['customerName', 'customerPhone', 'notes', 'damageNotes', 'paymentMethod', 'insurance']) {
+              if (d[k] !== undefined) upd[k] = d[k];
+            }
+            if (d.returnLevel !== undefined) upd.returnLevel = d.returnLevel;
+            if (d.mileageOut !== undefined) upd.mileageOut = d.mileageOut;
+            if (d.mileageReturn !== undefined) upd.mileageReturn = d.mileageReturn;
+            if (d.refundDeposit !== undefined) upd.depositRefunded = !!d.refundDeposit;
+            // reprice window/unit edits only while PENDING
+            if (existing.status === 'PENDING' && (d.startDate || d.endDate || d.unitId || d.insurance !== undefined)) {
+              const u2 = await prisma.rentalUnit.findFirst({ where: { id: d.unitId || existing.unitId, isDeleted: false } });
+              if (u2) {
+                const st = midnightM(d.startDate || existing.startDate), en = midnightM(d.endDate || existing.endDate);
+                if (en >= st) {
+                  const px = priceBooking(u2.unitType, st, en, d.insurance !== undefined ? !!d.insurance : existing.insurance);
+                  Object.assign(upd, {
+                    unitId: u2.id, unitName: u2.name, unitPlate: u2.plate, startDate: st, endDate: en,
+                    dailyRate: px.dailyRate, days: px.days, rentAmount: px.rentAmount, discount: px.discount,
+                    insuranceTotal: px.insuranceTotal, totalAmount: px.totalAmount, depositAmount: px.deposit,
+                  });
+                }
+              }
+            }
+            if (d.status === 'ACTIVE' && existing.status === 'PENDING') {
+              upd.status = 'ACTIVE'; upd.startedAt = new Date(d.startedAt || Date.now());
+              upd.paidAmount = upd.totalAmount ?? existing.totalAmount;
+              if (!d.paymentMethod) upd.paymentMethod = existing.paymentMethod || 'CASH';
+            } else if (d.status === 'RETURNED' && existing.status === 'ACTIVE') {
+              const endRef = upd.endDate ?? existing.endDate;
+              const retAt = d.returnedAt ? new Date(d.returnedAt) : new Date();
+              const late = overtimeFee(upd.dailyRate ?? existing.dailyRate, endRef, retAt);
+              const newTotal = (upd.rentAmount ?? existing.rentAmount) + (upd.insuranceTotal ?? existing.insuranceTotal) + late;
+              upd.status = 'RETURNED'; upd.returnedAt = retAt;
+              upd.overtimeFee = late; upd.totalAmount = newTotal; upd.paidAmount = newTotal;
+            }
+            const updated = await prisma.rentalBooking.update({ where: { id: entityId }, data: upd });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+
+          } else if (operation === 'DELETE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already removed' });
+              continue;
+            }
+            if (existing.status !== 'PENDING') {
+              results.push({ entityType, entityId, status: 'FAILED', error: existing.status === 'ACTIVE' ? 'Return the rental before cancelling' : 'Returned rentals stay on the revenue record' });
+              continue;
+            }
+            if (!existing.isDeleted) {
+              await prisma.rentalBooking.update({ where: { id: entityId }, data: { isDeleted: true, status: 'CANCELLED', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            }
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Employee') {
           const existing = await prisma.employee.findUnique({ where: { id: entityId } });
 
@@ -1350,6 +1485,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: { ...m, partsLines: parseLines(m.partsJson) },
         version: m.version,
         timestamp: m.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('RentalBooking')) {
+      const bookings = await prisma.rentalBooking.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...bookings.map(b => ({
+        entityType: 'RentalBooking',
+        entityId: b.id,
+        operation: 'UPDATE',
+        data: b,
+        version: b.version,
+        timestamp: b.updatedAt.toISOString(),
       })));
     }
 

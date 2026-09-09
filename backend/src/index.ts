@@ -17,6 +17,7 @@ import employeesRoutes from './routes/employees';
 import paymentsRoutes from './routes/payments';
 import carwashRouter from './routes/carwash';
 import maintenanceRouter from './routes/maintenance';
+import rentalsRouter from './routes/rentals';
 import invoicesRoutes from './routes/invoices';
 import syncRoutes from './routes/sync';
 import healthRoutes from './routes/health';
@@ -64,6 +65,7 @@ app.use('/api/employees', employeesRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/carwash', carwashRouter);
 app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/rentals', rentalsRouter);
 app.use('/api/invoices', invoicesRoutes);
 app.use('/api/sync', syncRoutes);
 
@@ -102,7 +104,7 @@ app.use((req, res) => {
     error: 'Endpoint not found',
     path: req.path,
     method: req.method,
-    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sales', '/api/suppliers', '/api/purchases', '/api/vehicles', '/api/employees', '/api/payments', '/api/invoices', '/api/carwash', '/api/maintenance', '/api/sync'],
+    availableEndpoints: ['/api/health', '/api/auth', '/api/users', '/api/customers', '/api/inventory', '/api/sales', '/api/suppliers', '/api/purchases', '/api/vehicles', '/api/employees', '/api/payments', '/api/invoices', '/api/carwash', '/api/maintenance', '/api/rentals', '/api/sync'],
   });
 });
 

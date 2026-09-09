@@ -4,6 +4,8 @@ import Dexie, { type Table } from 'dexie';
 import type { User, Customer, Product, Sale, Supplier, Purchase, Vehicle, Employee, Payment, Invoice, WashOrder, SyncStatus, SyncQueueItem, SyncMetadata,
   MaintenanceOrder,
   MaintPartLine,
+  RentalUnit,
+  RentalBooking,
 } from '../types';
 
 export interface LocalUser extends User {
@@ -44,6 +46,11 @@ export interface LocalEmployee extends Employee {
 }
 
 export interface LocalWashOrder extends WashOrder {
+  syncStatus?: SyncStatus;
+  _dirty?: boolean;
+}
+
+export interface LocalRentalBooking extends RentalBooking {
   syncStatus?: SyncStatus;
   _dirty?: boolean;
 }
@@ -97,6 +104,8 @@ class BujaLocalDB extends Dexie {
   invoices!: Table<LocalInvoice, string>;
   washOrders!: Table<LocalWashOrder, string>;
   maintenanceOrders!: Table<LocalMaintenanceOrder, string>;
+  rentalUnits!: Table<RentalUnit, string>;
+  rentalBookings!: Table<LocalRentalBooking, string>;
 
   constructor() {
     super('BujaAutoSpaERP_LocalDB');
@@ -161,6 +170,12 @@ class BujaLocalDB extends Dexie {
     // Version 10 - Maintenance work orders (Phase 10)
     this.version(10).stores({
       maintenanceOrders: 'id, orderNo, status, vehiclePlate, scheduledFor, updatedAt, syncStatus',
+    });
+
+    // Version 11 - Rentals (Phase 11): units cached read-only, bookings fully offline
+    this.version(11).stores({
+      rentalUnits: 'id, fleetClass, status, name, updatedAt',
+      rentalBookings: 'id, bookingNo, status, fleetClass, unitId, startDate, updatedAt, syncStatus',
     });
   }
 

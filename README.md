@@ -384,6 +384,46 @@ buja-auto-spa-erp/
       completed-dropped + delete-FAILED semantics, pull stream, viewer 403s).
       Regression: payments 38/38, employees 27/27, wash 31/31, brand 8/8, smoke 10/10.
 
+## ✅ Phase 11 Implemented - EV & Truck Rentals
+
+- [x] **One rental engine, two boards** (`/ev-rentals`, `/truck-rentals`) on a unified backend
+      `/api/rentals?class=EV|TRUCK`. Permission-gated per board (`evrentals:*` / `truckrentals:*`,
+      manage implies read, SUPER_ADMIN bypass), so a rental agent can run one fleet only.
+- [x] **Rate catalogue is server-owned** (`src/lib/rentalCatalog.ts`): 7 unit types from city EVs
+      (90,000 BIF/day) to charter buses (420,000 BIF/day), per-type refundable deposits,
+      damage insurance at 15,000 BIF/day and an automatic **weekly discount** (every full 7-day
+      block bills at 85% of list). Windows are inclusive-day and every amount is recomputed
+      server-side on create and on any date/unit/insurance edit - clients never send money.
+- [x] **Lifecycle with money attached**: Reserved → (keys handed over, full amount collected)
+      On rent → (odometer, fuel/charge level, damage notes, deposit refund decision) Returned.
+      Late returns bill 5% of the daily rate per hour, capped at one day's rate, added at return
+      by the server. Returned bookings are immutable (`RENTAL_RETURNED` 409) and only unstarted
+      reservations can be cancelled/deleted (`RENTAL_NOT_CANCELLABLE`).
+- [x] **Availability guards**: double-booking the same unit over an overlapping window is refused
+      with `UNIT_BOOKED` (and the conflicting booking number), units in the workshop refuse new
+      bookings (`UNIT_UNAVAILABLE`), and a unit with an open booking cannot be flipped to
+      maintenance or deleted (`UNIT_BUSY`). The board shows a 14-day fleet timeline so the
+      desk can see the holes before typing a booking.
+- [x] **Offline bookings**: `RentalBooking` joins the sync queue - a booking taken with no
+      network keeps a `TMP-RNT-…` number locally and self-heals to the canonical
+      `EVR-/TRR-YYYY-NNNNN` when the queue replays (CREATE replays revalidate overlap and
+      re-price on the server; stale versions surface as CONFLICT; offline returns re-bill
+      overtime; DELETE of an ACTIVE/RETURNED booking is refused at sync time and the local
+      row is restored). Units themselves are a server-managed catalogue cached read-only in
+      Dexie (v11) - fleet setup stays an office action.
+- [x] **Idempotent creates** (client uuid wins on replay) + `syncLog`/`AuditLog` on every write,
+      same guarantees the other modules have.
+- [x] **Dashboard cards** for both rentals are live (active count, fleet-on-street, today's
+      returned revenue) and the module chip reads "12 modules live".
+- [x] Demo data: 7 units (3 EV, 3 bookable trucks + 1 charter bus in the workshop) and 5
+      bookings covering on-rent, reserved (incl. insurance), a 14-day charter with the weekly
+      discount applied (−735,000 BIF) and a late return that paid the capped overtime bill.
+- [x] Verification: curl contract battery (pricing, discount, overlap, transitions, guards,
+      replay/CONFLICT, RBAC 403s) + **new Playwright suite `rental.js` 29/29** (preview math,
+      conflict copy, start/return flow, workshop block, offline TMP→TRR self-heal, USD/FR,
+      cashier fallback). Full regression after purge: tour 24/24, wash 31/31, maint 32/32,
+      payments 38/38, employees 27/27, brand 8/8, smoke 10/10 - **199/199**.
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -396,7 +436,7 @@ After foundation verification:
 - ~~Invoices / Payments~~ (completed in Phase 8)
 - ~~Car Wash~~ (completed in Phase 9)
 - ~~Maintenance~~ (completed in Phase 10)
-- EV Rentals / Truck Rentals
+- ~~EV Rentals / Truck Rentals~~ (completed in Phase 11)
 - Reports
 
 All modules will use same offline-first pattern: local IndexedDB + sync queue + cloud sync.

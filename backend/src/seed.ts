@@ -3,6 +3,7 @@ import { priceWash } from './lib/washCatalog';
 import { nextWashOrderNo } from './routes/carwash';
 import { priceMaint } from './lib/maintCatalog';
 import { nextMaintOrderNo } from './routes/maintenance';
+import { priceBooking, overtimeFee } from './lib/rentalCatalog';
 import prisma from './lib/prisma';
 
 async function seed() {
@@ -636,6 +637,71 @@ async function seed() {
     console.log('Seeded 5 demo maintenance work orders');
   } else {
     console.log(`Maintenance work orders already present (${existingMaint}), skipping`);
+  }
+
+  // Seed demo rental fleet + bookings (Phase 11) - only when tables are empty
+  const existingRentals = await prisma.rentalBooking.count();
+  const existingUnits = await prisma.rentalUnit.count();
+  if (existingUnits === 0) {
+    const unitDefs = [
+      { name: 'City Zip 200', fleetClass: 'EV', unitType: 'CITY_CAR', plate: 'EV 201 A', odometerKm: 18450 },
+      { name: 'BYD ETP3 Van', fleetClass: 'EV', unitType: 'VAN_EV', plate: 'EV 310 B', odometerKm: 9120 },
+      { name: 'Farizon GT 3.5t', fleetClass: 'EV', unitType: 'TRUCK_EV', plate: 'EV 777 C', odometerKm: 43900 },
+      { name: 'Isuzu NQR 3T', fleetClass: 'TRUCK', unitType: 'TRUCK_3T', plate: 'TR 2211 K', odometerKm: 88210 },
+      { name: 'Hino 500 8T', fleetClass: 'TRUCK', unitType: 'TRUCK_8T', plate: 'TR 1200 K', odometerKm: 156300 },
+      { name: 'Fuso Fighter Head', fleetClass: 'TRUCK', unitType: 'TRAILER_HEAD', plate: 'TR 8800 K', odometerKm: 231450 },
+      { name: 'Hyundai County Charter', fleetClass: 'TRUCK', unitType: 'BUS_CHARTER', plate: 'BB 3399 B', odometerKm: 175300, status: 'MAINTENANCE', notes: 'Gearbox noise - booked into the maintenance workshop' },
+    ] as any[];
+    const unitByPlate = new Map<string, string>();
+    for (const u of unitDefs) {
+      const created = await prisma.rentalUnit.create({ data: { name: u.name, fleetClass: u.fleetClass, unitType: u.unitType, plate: u.plate, odometerKm: u.odometerKm || 0, status: u.status || 'ACTIVE', notes: u.notes || null, lastSyncedAt: new Date() } });
+      unitByPlate.set(u.plate, created.id);
+    }
+    console.log(`Seeded ${unitDefs.length} rental units`);
+
+    const DAY = 86400000;
+    const now = new Date();
+    const day = (offset: number) => new Date(new Date(now.getTime() + offset * DAY).setUTCHours(0, 0, 0, 0));
+    const bookingDefs = [
+      { no: 'TRR-2026-00001', cls: 'TRUCK', plate: 'TR 1200 K', cust: 'Norega Mining Ltd', phone: '+257795550101', start: -9, end: -6, status: 'RETURNED', ins: false,
+        returnedAt: new Date(now.getTime() - 2 * 3600000), mileageOut: 155900, mileageReturn: 156300, returnLevel: 35, damage: 'Scratched left mudguard, cabin clean', refund: true, pay: 'BANK_TRANSFER' },
+      { no: 'TRR-2026-00002', cls: 'TRUCK', plate: 'TR 8800 K', cust: 'Bukavu Cargo Co', phone: '+257796660202', start: -2, end: 11, status: 'ACTIVE', ins: true,
+        startedAt: new Date(now.getTime() - 2 * DAY), mileageOut: 231450, pay: 'MOBILE_MONEY' },
+      { no: 'EVR-2026-00001', cls: 'EV', plate: 'EV 310 B', cust: 'SN Urwino Water Board', phone: '+257792220303', start: -1, end: 1, status: 'ACTIVE', ins: false,
+        startedAt: new Date(now.getTime() - DAY), mileageOut: 9120, pay: 'CASH' },
+      { no: 'EVR-2026-00002', cls: 'EV', plate: 'EV 201 A', cust: 'Guest - K. Manirakiza', phone: '+257791110404', start: 3, end: 7, status: 'PENDING', ins: true },
+      { no: 'TRR-2026-00003', cls: 'TRUCK', plate: 'TR 2211 K', cust: 'Bujumbura Municipal Works', phone: null, start: 5, end: 7, status: 'PENDING', ins: false },
+    ] as any[];
+    for (const bd of bookingDefs) {
+      const unitId = unitByPlate.get(bd.plate)!;
+      const unit = await prisma.rentalUnit.findUnique({ where: { id: unitId } });
+      const start = day(bd.start), end = day(bd.end);
+      const px = priceBooking(unit!.unitType, start, end, bd.ins);
+      const late = bd.status === 'RETURNED' ? overtimeFee(px.dailyRate, end, bd.returnedAt) : 0;
+      const total = px.totalAmount + late;
+      await prisma.rentalBooking.create({
+        data: {
+          bookingNo: bd.no, fleetClass: bd.cls, unitId, unitName: unit!.name, unitPlate: unit!.plate,
+          customerName: bd.cust, customerPhone: bd.phone || null,
+          startDate: start, endDate: end, status: bd.status, insurance: !!bd.ins,
+          dailyRate: px.dailyRate, days: px.days, rentAmount: px.rentAmount, discount: px.discount,
+          insuranceTotal: px.insuranceTotal, overtimeFee: late, totalAmount: total,
+          depositAmount: px.deposit, depositRefunded: !!bd.refund,
+          paidAmount: bd.status === 'PENDING' ? 0 : total,
+          paymentMethod: bd.status === 'PENDING' ? null : (bd.pay || 'CASH'),
+          mileageOut: bd.mileageOut ?? null, mileageReturn: bd.mileageReturn ?? null,
+          returnLevel: bd.returnLevel ?? null, damageNotes: bd.damage || null,
+          startedAt: bd.startedAt || (bd.status === 'RETURNED' ? new Date(start.getTime() - DAY) : null),
+          returnedAt: bd.returnedAt || null,
+          lastSyncedAt: new Date(),
+        },
+      });
+    }
+    console.log(`Seeded ${bookingDefs.length} rental bookings`);
+  } else if (existingRentals === 0) {
+    console.log('Rental units present but no bookings - run a fresh seed for demo data');
+  } else {
+    console.log(`Rentals already present (${existingRentals} bookings), skipping`);
   }
 
   // Seed demo employees (Phase 7) - only when table is empty

@@ -235,6 +235,61 @@ export interface MaintenanceOrder {
   syncStatus?: SyncStatus;
 }
 
+export interface RentalUnit {
+  id: string;
+  name: string;
+  fleetClass: 'EV' | 'TRUCK';
+  unitType: string;
+  plate?: string | null;
+  status: 'ACTIVE' | 'MAINTENANCE';
+  odometerKm: number;
+  notes?: string | null;
+  unitTypeLabel?: string;
+  dailyRate?: number; // catalog snapshot (BIF/day)
+  depositAmount?: number;
+  nextBooking?: { bookingNo: string; status: string; startDate: string; endDate: string } | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RentalBooking {
+  id: string;
+  bookingNo: string; // EVR-/TRR-YYYY-NNNNN (TMP-RNT-xxx while offline)
+  fleetClass: 'EV' | 'TRUCK';
+  unitId: string;
+  unitName: string;
+  unitPlate?: string | null;
+  customerName: string;
+  customerPhone?: string | null;
+  startDate: string;
+  endDate: string;
+  status: 'PENDING' | 'ACTIVE' | 'RETURNED' | 'CANCELLED';
+  insurance: boolean;
+  dailyRate: number; // BIF
+  days: number;
+  rentAmount: number;
+  discount: number; // weekly savings
+  insuranceTotal: number;
+  overtimeFee: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentMethod?: string | null;
+  depositAmount: number;
+  depositRefunded: boolean;
+  mileageOut?: number | null;
+  mileageReturn?: number | null;
+  returnLevel?: number | null; // % charge (EV) / fuel (truck) at return
+  damageNotes?: string | null;
+  notes?: string | null;
+  startedAt?: string | null;
+  returnedAt?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus?: SyncStatus;
+}
+
 export interface WashOrder {
   id: string;
   orderNo: string; // canonical WSH-YYYY-NNNNN (TMP-WSH-xxx while offline)

@@ -218,6 +218,12 @@ class SyncEngine {
                 if (result.version) upd.version = result.version;
                 if ((result as any).orderNo) upd.orderNo = (result as any).orderNo;
                 await localDB.maintenanceOrders.update(result.entityId, upd);
+              } else if (result.entityType === 'RentalBooking') {
+                // Server assigned the canonical EVR/TRR booking number (and revalidated pricing)
+                const rup: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) rup.version = result.version;
+                if ((result as any).bookingNo) rup.bookingNo = (result as any).bookingNo;
+                await localDB.rentalBookings.update(result.entityId, rup);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -426,6 +432,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.maintenanceOrders.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'RentalBooking') {
+            if (change.operation === 'DELETE') {
+              await localDB.rentalBookings.delete(change.entityId);
+            } else {
+              const existing = await localDB.rentalBookings.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.rentalBookings.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'Payment') {
@@ -706,6 +724,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'MaintenanceOrder') {
           await localDB.maintenanceOrders.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'RentalBooking') {
+          await localDB.rentalBookings.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,

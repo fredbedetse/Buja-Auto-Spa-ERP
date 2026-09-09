@@ -31,6 +31,10 @@ interface SystemStats {
   washTotal: number;
   washRevenueToday: number;
   maintTotal: number;
+  evUnits: number;
+  evActive: number;
+  truckActive: number;
+  truckRevToday: number;
   maintRevenueToday: number;
   maintOverdue: number;
   invoiceCount: number;
@@ -66,6 +70,10 @@ export default function Dashboard() {
     washTotal: 0,
     washRevenueToday: 0,
     maintTotal: 0,
+    evUnits: 0,
+    evActive: 0,
+    truckActive: 0,
+    truckRevToday: 0,
     maintRevenueToday: 0,
     maintOverdue: 0,
     invoiceCount: 0,
@@ -129,6 +137,8 @@ export default function Dashboard() {
         let serverWashTotal: number | null = null;
         let serverWashRev: number | null = null;
         let serverMaintTotal: number | null = null;
+        let serverEv: any = null;
+        let serverTruck: any = null;
         let serverMaintRev: number | null = null;
         let serverMaintOverdue: number | null = null;
         let serverInvoices: number | null = null;
@@ -156,6 +166,7 @@ export default function Dashboard() {
         serverInvoices = serverInvOut = serverPayMonth = null;
         serverWashTotal = serverWashRev = null;
         serverMaintTotal = serverMaintRev = serverMaintOverdue = null;
+        serverEv = serverTruck = null;
         try {
           const vstats = await apiClient.get<any>('/vehicles/stats');
           serverVehicles = vstats.total ?? null;
@@ -189,6 +200,17 @@ export default function Dashboard() {
           serverMaintTotal = null;
           serverMaintRev = null;
           serverMaintOverdue = null;
+        }
+        try {
+          const [evst, trst] = await Promise.all([
+            apiClient.get<any>('/rentals/stats?class=EV'),
+            apiClient.get<any>('/rentals/stats?class=TRUCK'),
+          ]);
+          serverEv = evst;
+          serverTruck = trst;
+        } catch {
+          serverEv = null;
+          serverTruck = null;
         }
         try {
           const istat = await apiClient.get<any>('/invoices/stats');
@@ -226,6 +248,10 @@ export default function Dashboard() {
           washTotal: serverWashTotal ?? (await localDB.washOrders.count()),
           washRevenueToday: serverWashRev ?? 0,
           maintTotal: serverMaintTotal ?? (await localDB.maintenanceOrders.count()),
+          evUnits: serverEv?.units ?? (await localDB.rentalUnits.toArray()).filter(u => u.fleetClass === 'EV' && u.status === 'ACTIVE').length,
+          evActive: serverEv?.active ?? (await localDB.rentalBookings.where('status').equals('ACTIVE').count()),
+          truckActive: serverTruck?.active ?? 0,
+          truckRevToday: serverTruck?.revenueToday ?? 0,
           maintRevenueToday: serverMaintRev ?? 0,
           maintOverdue: serverMaintOverdue ?? 0,
           invoiceCount: serverInvoices ?? (await localDB.sales.count()),
@@ -258,8 +284,8 @@ export default function Dashboard() {
 { name: 'dash.paymentsName', icon: CreditCard, color: 'from-emerald-500 to-green-600', count: fmtBif(stats.payMonth), sub: undefined, desc: 'dash.paymentsDesc', href: '/payments', implemented: true },
     { name: 'nav.carwash', icon: Droplets, color: 'from-cyan-500 to-green-600', count: String(stats.washTotal), sub: stats.washRevenueToday > 0 ? t('dash.washSub', { money: fmtBif(stats.washRevenueToday) }) : undefined, desc: 'dash.washDesc', href: '/carwash', implemented: true },
         { name: 'nav.maintenance', icon: Wrench, color: 'from-sky-500 to-[#16A34A]', count: String(stats.maintTotal), sub: stats.maintOverdue > 0 ? t('dash.maintOverdue', { n: stats.maintOverdue }) : (stats.maintRevenueToday > 0 ? t('dash.maintSub', { money: fmtBif(stats.maintRevenueToday) }) : undefined), desc: 'dash.maintDesc', href: '/maintenance', implemented: true },
-    { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: 'Soon', desc: 'dash.evDesc', href: '/ev-rentals' },
-    { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: 'Soon', desc: 'dash.truckDesc', href: '/truck-rentals' },
+    { name: 'nav.evRentals', icon: Zap, color: 'from-green-500 to-emerald-500', count: String(stats.evActive), sub: stats.evActive > 0 ? t('dash.evSub', { n: stats.evUnits }) : undefined, desc: 'dash.evDesc', href: '/ev-rentals', implemented: true },
+    { name: 'nav.truckRentals', icon: Truck, color: 'from-purple-500 to-pink-500', count: String(stats.truckActive), sub: stats.truckRevToday > 0 ? t('dash.truckSub', { money: fmtBif(stats.truckRevToday) }) : undefined, desc: 'dash.truckDesc', href: '/truck-rentals', implemented: true },
 ];
 
   return (
@@ -427,7 +453,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">{t('dash.bizModules')}</h2>
           <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 10 })}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">{t('dash.modsLive', { n: 12 })}</span>
           </span>
         </div>
         

@@ -489,6 +489,80 @@ model Payment {
   @@index([updatedAt])
 }
 
+model RentalUnit {
+  id         String   @id @default(uuid())
+  name       String
+  fleetClass String // EV | TRUCK
+  unitType   String // CITY_CAR | VAN_EV | TRUCK_EV | TRUCK_3T | TRUCK_8T | TRAILER_HEAD | BUS_CHARTER
+  plate      String?
+  status     String   @default("ACTIVE") // ACTIVE | MAINTENANCE
+  odometerKm Int      @default(0)
+  notes      String?
+
+  version      Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastSyncedAt DateTime?
+  deviceId     String?
+  isDeleted    Boolean   @default(false)
+
+  @@index([fleetClass])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model RentalBooking {
+  id         String  @id @default(uuid())
+  bookingNo  String  @unique // EVR-/TRR-YYYY-NNNNN server-assigned (TMP-RNT-xxx while offline)
+  fleetClass String // EV | TRUCK
+  unitId     String
+  unitName   String // snapshot for offline display
+  unitPlate  String?
+  customerName String
+  customerPhone String?
+
+  startDate DateTime // day-granular rental window
+  endDate   DateTime // last day included
+  status    String   @default("PENDING") // PENDING | ACTIVE | RETURNED | CANCELLED
+  insurance Boolean  @default(false)
+
+  dailyRate     Float @default(0) // catalog snapshot (BIF)
+  days          Int   @default(1)
+  rentAmount    Float @default(0) // after weekly discount
+  discount      Float @default(0) // weekly savings (BIF)
+  insuranceTotal Float @default(0)
+  overtimeFee   Float @default(0) // charged at return
+  totalAmount   Float @default(0) // rent + insurance + overtime
+  paidAmount    Float @default(0) // collected at pickup
+  paymentMethod String?
+
+  depositAmount  Float   @default(0)
+  depositRefunded Boolean @default(false)
+
+  mileageOut     Int?
+  mileageReturn  Int?
+  returnLevel    Int? // % charge (EV) or fuel (truck) at return
+  damageNotes    String?
+  notes          String?
+
+  startedAt  DateTime?
+  returnedAt DateTime?
+
+  version      Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastSyncedAt DateTime?
+  deviceId     String?
+  isDeleted    Boolean   @default(false)
+
+  @@index([status])
+  @@index([fleetClass])
+  @@index([unitId])
+  @@index([startDate])
+  @@index([returnedAt])
+  @@index([updatedAt])
+}
+
 model MaintenanceOrder {
   id            String    @id @default(uuid())
   orderNo       String    @unique // WO-YYYY-NNNNN, server-assigned (TMP-WO-xxx while offline)
