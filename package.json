@@ -1,26 +1,35 @@
 {
-  "name": "buja-auto-spa-erp",
-  "version": "1.0.0",
+  "name": "buja-auto-spa-erp-frontend",
   "private": true,
-  "description": "Offline-first ERP for Buja Auto Spa - Truck parts, maintenance, EV & truck rentals, car wash",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "npm run build:backend && npm run build:frontend",
-    "build:backend": "cd backend && npm run build",
-    "build:frontend": "cd frontend && npm run build",
-    "start": "cd backend && npm start",
-    "setup": "npm run setup:backend && npm run setup:frontend",
-    "setup:backend": "cd backend && npm install && npx prisma generate && npx prisma migrate dev --name init && npm run db:seed",
-    "setup:frontend": "cd frontend && npm install",
-    "test:build": "npm run build && echo '✅ Build successful - Foundation verified'"
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dexie": "^4.0.11",
+    "dexie-react-hooks": "^1.1.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1",
+    "zustand": "^4.5.2",
+    "uuid": "^10.0.0",
+    "lucide-react": "^0.400.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
-  "workspaces": [
-    "backend",
-    "frontend"
-  ]
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
+    "vite-plugin-pwa": "^0.19.0"
+  }
 }
