@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -57,6 +57,8 @@ export default function Layout() {
   const onlineStatus = useOnlineStatus();
   const syncStatus = useSyncStatus();
   const navigate = useNavigate();
+  const location = useLocation();
+  const crumb = navigation.find(n => n.href === location.pathname)?.name || (location.pathname === '/dashboard' ? 'Dashboard' : 'Dashboard');
 
   const filteredNav = navigation.filter(item => {
     if (item.module === 'dashboard:read') return true;
@@ -215,7 +217,7 @@ export default function Layout() {
             <div className="hidden lg:flex items-center gap-2 text-sm text-gray-500">
               <span>Buja Auto Spa ERP</span>
               <span>/</span>
-              <span className="text-gray-900 font-medium">Dashboard</span>
+              <span className="text-gray-900 font-medium">{crumb}</span>
             </div>
 
             {/* Global Search - placeholder */}
