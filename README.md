@@ -319,6 +319,34 @@ buja-auto-spa-erp/
       sync push/pull replay round-trip, viewer 403s). Regression: employees suite 27/27 and the
       cross-module smoke 10/10 re-run clean (module chip expectation bumped to "8 modules live").
 
+## ✅ Phase 9 Implemented - Car Wash Board
+
+- [x] **Car Wash module** (`/carwash`) - live bay board: every wash is an order (`WSH-YYYY-NNNNN`)
+      with customer + phone, vehicle plate & type (Sedan / SUV / Van / Pickup / Truck / Bus), service
+      (Express rinse, Classic, Premium, Interior, Engine bay, Full detail, Polish & wax), bay #1-6,
+      assigned washer, notes and a color-coded status (Waiting → Washing → Done, plus Cancelled).
+- [x] **Server-side price catalog** (`/api/carwash/catalog`): base price per service × vehicle-size
+      multiplier (Truck = 1.6×, Bus = 2.0× …), rounded to the nearest 100 BIF; discounts clamp
+      at gross so totals can never go negative - offline clients can't forge prices because the API
+      always recomputes the money columns.
+- [x] **Lifecycle guards**: starting stamps `startedAt`; completing defaults to paid-in-full with a
+      payment-method choice (cash / mobile money / transfer / cheque); completed orders are final
+      (409 `WASH_COMPLETED` on reopen or delete) while waiting jobs can be pulled off the board.
+      Updates are version-locked (409 `VERSION_CONFLICT` + the server row comes back).
+- [x] **Offline-first**: Dexie v9 `washOrders`, `CarWashOrder` push branch (CREATE mints the
+      canonical `WSH-` number and hands it back so the local `TMP-WSH-` row self-heals on sync;
+      UPDATE replays with version-conflict → SERVER_WINS adoption; DELETE tombstones), pull stream,
+      full create/start/complete/remove while the network is off.
+- [x] **RBAC**: `carwash:read` / `carwash:manage` - Cashier & Washer run the board, Manager/Admin
+      everything, Viewer gets 403s and no nav entry. Stats feed the dashboard card (orders +
+      today's wash revenue) and the module chip now reads "9 modules live".
+- [x] QA: Playwright suite 31/31 (seeded board & stat math, plate search, status filter, discount
+      preview, create/start/complete lifecycle with revenue re-count, board removal, fully-offline
+      order → "Pending sync" → canonical number, USD $8.67 formatting, FR labels, cashier access,
+      zero console errors) + curl contract suite (catalog math, forged-discount clamp, idempotent
+      replay, 400/404/409 guards, sync conflict semantics, viewer 403s). Regression: payments 38/38
+      (modal check made rerun-robust), employees 27/27, cross-module smoke 10/10.
+
 ## 🔜 Next Phases
 
 After foundation verification:
@@ -329,7 +357,7 @@ After foundation verification:
 - ~~Vehicles / Fleet~~ (completed in Phase 6)
 - ~~Employees / Payroll~~ (completed in Phase 7)
 - ~~Invoices / Payments~~ (completed in Phase 8)
-- Car Wash
+- ~~Car Wash~~ (completed in Phase 9)
 - Maintenance
 - EV Rentals / Truck Rentals
 - Reports

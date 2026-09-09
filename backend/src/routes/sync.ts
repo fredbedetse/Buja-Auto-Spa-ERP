@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { nextPaymentNo } from '../routes/payments';
+import { nextWashOrderNo } from '../routes/carwash';
+import { priceWash } from '../lib/washCatalog';
 import { buildSaleTxn } from './sales';
 import { buildPurchaseTxn } from './purchases';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -733,6 +735,97 @@ const reason = vehErr.code === 'P2002' ? 'Duplicate plate - another vehicle alre
             results.push({ entityType, entityId, status: 'SYNCED' });
           }
 
+        } else if (entityType === 'CarWashOrder') {
+          const existing = await prisma.carWashOrder.findUnique({ where: { id: entityId } });
+
+          if (operation === 'CREATE') {
+            if (existing && !existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version, orderNo: existing.orderNo });
+              continue;
+            }
+            const { id: _wid, orderNo: _wno, deviceId: _wd, ...wRest } = data || {};
+            if (!wRest.vehiclePlate) {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Vehicle plate required' });
+              continue;
+            }
+            const { basePrice, surcharge, total, discount: discUsed } = priceWash(wRest.serviceType || 'CLASSIC', wRest.vehicleType || 'SEDAN', wRest.discount || 0);
+            const wstatus = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(wRest.status) ? wRest.status : 'WAITING';
+            const orderNo = await nextWashOrderNo();
+            try {
+              const created = await prisma.carWashOrder.create({
+                data: {
+                  id: entityId, orderNo,
+                  customerName: wRest.customerName || null, customerPhone: wRest.customerPhone || null,
+                  vehiclePlate: String(wRest.vehiclePlate).toUpperCase(),
+                  vehicleType: wRest.vehicleType || 'SEDAN', serviceType: wRest.serviceType || 'CLASSIC',
+                  basePrice, surcharge, discount: discUsed, totalAmount: total,
+                  paidAmount: wstatus === 'COMPLETED' ? total : 0,
+                  paymentMethod: wRest.paymentMethod || (wstatus === 'COMPLETED' ? 'CASH' : null),
+                  status: wstatus, bay: wRest.bay || 1, washerName: wRest.washerName || null, notes: wRest.notes || null,
+                  startedAt: wstatus === 'IN_PROGRESS' || wstatus === 'COMPLETED' ? new Date(wRest.startedAt || Date.now()) : null,
+                  completedAt: wstatus === 'COMPLETED' ? new Date(wRest.completedAt || Date.now()) : null,
+                  lastSyncedAt: new Date(), deviceId,
+                },
+              });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'CREATE', status: 'SYNCED', version: 1, clientVersion, payload: JSON.stringify(data), syncedAt: new Date() } });
+              results.push({ entityType, entityId, status: 'SYNCED', version: 1, orderNo: created.orderNo });
+            } catch (e: any) {
+              results.push({ entityType, entityId, status: 'FAILED', error: e?.code === 'P2002' ? 'Wash number race - retry' : 'Create failed' });
+            }
+
+          } else if (operation === 'UPDATE') {
+            if (!existing || existing.isDeleted) {
+              results.push({ entityType, entityId, status: 'FAILED', error: existing ? 'Removed server-side' : 'Order not found on server' });
+              continue;
+            }
+            const clientV = data?.version ?? clientVersion ?? version;
+            if (clientV !== undefined && clientV !== null && existing.version !== clientV) {
+              results.push({ entityType, entityId, status: 'CONFLICT', error: 'Version conflict', serverVersion: existing.version, serverData: existing });
+              await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'CONFLICT', version: existing.version, clientVersion, errorMessage: 'Version conflict', conflictData: JSON.stringify({ clientData: data, serverData: existing }) } });
+              continue;
+            }
+            if (existing.status === 'COMPLETED') {
+              results.push({ entityType, entityId, status: 'SYNCED', version: existing.version });
+              continue; // completed orders are final - offline edits are dropped
+            }
+            const upd: any = { lastSyncedAt: new Date(), deviceId, version: { increment: 1 } };
+            const d = data || {};
+            for (const k of ['customerName', 'customerPhone', 'washerName', 'notes', 'paymentMethod', 'serviceType', 'vehicleType', 'status']) {
+              if (d[k] !== undefined) upd[k] = d[k];
+            }
+            if (d.vehiclePlate) upd.vehiclePlate = String(d.vehiclePlate).toUpperCase();
+            if (d.bay !== undefined) upd.bay = Math.min(6, Math.max(1, parseInt(d.bay) || 1));
+            if (d.discount !== undefined) {
+              const px = priceWash(d.serviceType || existing.serviceType, d.vehicleType || existing.vehicleType, d.discount || 0);
+              upd.discount = px.discount; upd.basePrice = px.basePrice; upd.surcharge = px.surcharge; upd.totalAmount = px.total;
+            }
+            const nextStatus = upd.status || existing.status;
+            if (nextStatus === 'IN_PROGRESS' && !existing.startedAt) upd.startedAt = new Date(d.startedAt || Date.now());
+            if (nextStatus === 'COMPLETED' && existing.status !== 'COMPLETED') {
+              upd.completedAt = new Date(d.completedAt || Date.now());
+              upd.paidAmount = d.paidAmount !== undefined ? Math.min(d.paidAmount, existing.totalAmount) : existing.totalAmount;
+              if (!d.paymentMethod) upd.paymentMethod = existing.paymentMethod || 'CASH';
+            }
+            const updated = await prisma.carWashOrder.update({ where: { id: entityId }, data: upd });
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'UPDATE', status: 'SYNCED', version: updated.version, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED', version: updated.version });
+
+          } else if (operation === 'DELETE') {
+            if (!existing) {
+              results.push({ entityType, entityId, status: 'SYNCED', message: 'Already removed' });
+              continue;
+            }
+            if (existing.status === 'COMPLETED') {
+              results.push({ entityType, entityId, status: 'FAILED', error: 'Completed wash orders stay on the revenue record' });
+              continue;
+            }
+            if (!existing.isDeleted) {
+              await prisma.carWashOrder.update({ where: { id: entityId }, data: { isDeleted: true, status: 'CANCELLED', version: { increment: 1 }, lastSyncedAt: new Date(), deviceId } });
+            }
+            await prisma.syncLog.create({ data: { userId, deviceId, entityType, entityId, operation: 'DELETE', status: 'SYNCED', version: (existing.version || 1) + 1, clientVersion, syncedAt: new Date() } });
+            results.push({ entityType, entityId, status: 'SYNCED' });
+          }
+
         } else if (entityType === 'Employee') {
           const existing = await prisma.employee.findUnique({ where: { id: entityId } });
 
@@ -1104,6 +1197,22 @@ router.post('/pull', async (req: AuthenticatedRequest, res) => {
         data: pm,
         version: pm.version,
         timestamp: pm.updatedAt.toISOString(),
+      })));
+    }
+
+    if (!entityTypes || entityTypes.includes('CarWashOrder')) {
+      const washes = await prisma.carWashOrder.findMany({
+        where: { updatedAt: { gt: lastSyncDate }, isDeleted: false },
+        take: limit,
+        orderBy: { updatedAt: 'asc' },
+      });
+      changes.push(...washes.map(w => ({
+        entityType: 'CarWashOrder',
+        entityId: w.id,
+        operation: 'UPDATE',
+        data: w,
+        version: w.version,
+        timestamp: w.updatedAt.toISOString(),
       })));
     }
 

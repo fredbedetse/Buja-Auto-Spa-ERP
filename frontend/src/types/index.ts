@@ -195,6 +195,32 @@ export interface Vehicle {
   syncStatus?: SyncStatus;
 }
 
+export interface WashOrder {
+  id: string;
+  orderNo: string; // canonical WSH-YYYY-NNNNN (TMP-WSH-xxx while offline)
+  customerName?: string | null;
+  customerPhone?: string | null;
+  vehiclePlate: string;
+  vehicleType: string; // SEDAN | SUV | VAN | PICKUP | TRUCK | BUS
+  serviceType: string; // EXPRESS | CLASSIC | PREMIUM | INTERIOR | ENGINE | FULL | WAX
+  basePrice: number; // canonical BIF
+  surcharge: number;
+  discount: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentMethod?: string | null;
+  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  bay: number;
+  washerName?: string | null;
+  notes?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus?: SyncStatus;
+}
+
 export interface Payment {
   id: string;
   paymentNo: string; // canonical RCPT-YYYY-NNNNN (TMP-xxx while offline)

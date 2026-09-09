@@ -13,6 +13,7 @@ import VehiclesPage from './pages/Vehicles';
 import EmployeesPage from './pages/Employees';
 import InvoicesPage from './pages/Invoices';
 import PaymentsPage from './pages/Payments';
+import CarWashPage from './pages/CarWash';
 import PurchasesPage from './pages/Purchases';
 import SyncStatusPage from './pages/SyncStatus';
 import NotImplemented from './pages/NotImplemented';
@@ -81,14 +82,11 @@ export default function App() {
           <Route path="employees" element={<EmployeesPage />} />
           <Route path="invoices" element={<InvoicesPage />} />
           <Route path="payments" element={<PaymentsPage />} />
-          <Route path="employees" element={<NotImplemented />} />
+          <Route path="carwash" element={<CarWashPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="sales" element={<SalesPage />} />
-          <Route path="invoices" element={<NotImplemented />} />
-          <Route path="payments" element={<NotImplemented />} />
           <Route path="expenses" element={<NotImplemented />} />
-          <Route path="carwash" element={<NotImplemented />} />
           <Route path="maintenance" element={<NotImplemented />} />
           <Route path="ev-rentals" element={<NotImplemented />} />
           <Route path="truck-rentals" element={<NotImplemented />} />

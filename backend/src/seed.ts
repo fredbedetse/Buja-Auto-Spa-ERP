@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import { priceWash } from './lib/washCatalog';
+import { nextWashOrderNo } from './routes/carwash';
 import prisma from './lib/prisma';
 
 async function seed() {
@@ -508,6 +510,46 @@ async function seed() {
     }
   } else {
     console.log(`Receipts already present (${existingPayments}), skipping`);
+  }
+
+  // Seed demo wash orders (Phase 9) - only when table is empty
+  const existingWash = await prisma.carWashOrder.count();
+  if (existingWash === 0) {
+    const today = new Date();
+    const washRows: any[] = [
+      { customerName: 'Hakizimana Jean', customerPhone: '+25779222333', vehiclePlate: '1AB-2345', vehicleType: 'SEDAN', serviceType: 'CLASSIC', status: 'COMPLETED', bay: 1, washerName: 'Jean-Claude Karerwa', paymentMethod: 'CASH', completedAt: today, notes: 'Pre-wash spray for mud' },
+      { customerName: 'Claudine Niyongere', customerPhone: '+257792200333', vehiclePlate: '3CD-7788', vehicleType: 'SUV', serviceType: 'PREMIUM', status: 'COMPLETED', bay: 2, washerName: 'Fabrice Nshimirimana', paymentMethod: 'MOBILE_MONEY', completedAt: today },
+      { customerName: 'Ngabo Transports SARL', customerPhone: '+257795000100', vehiclePlate: 'BB 4521 A', vehicleType: 'TRUCK', serviceType: 'FULL', status: 'IN_PROGRESS', bay: 2, washerName: 'Emmanuel Nkurunziza', startedAt: today, notes: 'Cab + trailer tarp wash' },
+      { customerName: 'Niyonsaba Marie', vehiclePlate: '9XY-1001', vehicleType: 'SEDAN', serviceType: 'EXPRESS', status: 'WAITING', bay: 1 },
+      { customerName: 'Bigirimana Emmanuel', vehiclePlate: '5GH-2468', vehicleType: 'SUV', serviceType: 'WAX', status: 'WAITING', bay: 3, notes: 'Wants hand-dry only' },
+      { customerName: 'Societe BUJA Logistics', vehiclePlate: '7KL-1357', vehicleType: 'VAN', serviceType: 'INTERIOR', status: 'CANCELLED', bay: 1, notes: 'Customer left - no-show' },
+    ];
+    for (const r of washRows) {
+      const { serviceType, vehicleType, status } = r as any;
+      const { basePrice, surcharge, total } = priceWash(serviceType, vehicleType, 0);
+      await prisma.carWashOrder.create({
+        data: {
+          orderNo: await nextWashOrderNo(prisma),
+          customerName: r.customerName || null,
+          customerPhone: r.customerPhone || null,
+          vehiclePlate: r.vehiclePlate,
+          vehicleType, serviceType,
+          basePrice, surcharge, discount: 0, totalAmount: total,
+          paidAmount: status === 'COMPLETED' ? total : 0,
+          paymentMethod: r.paymentMethod || null,
+          status,
+          bay: r.bay || 1,
+          washerName: r.washerName || null,
+          notes: r.notes || null,
+          startedAt: r.startedAt || (status === 'COMPLETED' ? today : null),
+          completedAt: r.completedAt || null,
+          lastSyncedAt: today,
+        },
+      });
+    }
+    console.log('Seeded 6 demo wash orders');
+  } else {
+    console.log(`Wash orders already present (${existingWash}), skipping`);
   }
 
   // Seed demo vehicles (Phase 6) - only when table is empty

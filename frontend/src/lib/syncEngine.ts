@@ -206,6 +206,12 @@ class SyncEngine {
                 if (result.version) upd.version = result.version;
                 if ((result as any).paymentNo) upd.paymentNo = (result as any).paymentNo;
                 await localDB.payments.update(result.entityId, upd);
+              } else if (result.entityType === 'CarWashOrder') {
+                // Server assigned the canonical wash order number
+                const upd: any = { _dirty: false, syncStatus: 'SYNCED' };
+                if (result.version) upd.version = result.version;
+                if ((result as any).orderNo) upd.orderNo = (result as any).orderNo;
+                await localDB.washOrders.update(result.entityId, upd);
               }
             } catch (e) {
               console.warn('Could not mark record synced locally:', e);
@@ -390,6 +396,18 @@ class SyncEngine {
                 continue;
               }
               await localDB.vehicles.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
+            }
+            pulled++;
+          } else if (change.entityType === 'CarWashOrder') {
+            if (change.operation === 'DELETE') {
+              await localDB.washOrders.delete(change.entityId);
+            } else {
+              const existing = await localDB.washOrders.get(change.entityId);
+              if (existing && (existing as any)._dirty) {
+                console.log(`⚠️ Skipping pull for dirty local record: ${change.entityId}`);
+                continue;
+              }
+              await localDB.washOrders.put({ ...change.data, syncStatus: 'SYNCED', _dirty: false });
             }
             pulled++;
           } else if (change.entityType === 'Payment') {
@@ -658,6 +676,12 @@ class SyncEngine {
           });
         } else if (item.entityType === 'Payment') {
           await localDB.payments.put({
+            ...item.data._conflict.serverData,
+            syncStatus: 'SYNCED',
+            _dirty: false,
+          });
+        } else if (item.entityType === 'CarWashOrder') {
+          await localDB.washOrders.put({
             ...item.data._conflict.serverData,
             syncStatus: 'SYNCED',
             _dirty: false,
