@@ -1,7 +1,7 @@
 // API client with offline support and token refresh
 import { getDeviceId } from './device';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = 'https://buja-auto-spa-backend.onrender.com/api';
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
