@@ -183,25 +183,25 @@ class ApiClient {
 
   // Auth methods
   async login(identifier: string, password: string) {
-    const { deviceId, deviceInfo } = getDeviceIdAndInfo();
-    
-    const data = await this.post<{
-      user: any;
-      accessToken: string;
-      refreshToken: string;
-      sessionId: string;
-    }>('/auth/login', {
-      identifier,
-      password,
-      deviceId,
-      deviceInfo,
-    }, { skipAuth: true });
+  const { deviceId, deviceInfo } = getDeviceIdAndInfo();
 
-    this.setTokens(data.accessToken, data.refreshToken);
-    localStorage.setItem('buja_user', JSON.stringify(data.user));
-    
-    return data;
-  }
+  const data = await this.post<{
+    user: any;
+    accessToken: string;
+    refreshToken: string;
+    sessionId: string;
+  }>('/auth/login', {
+    identifier,
+    password,
+    deviceId,
+    deviceInfo,
+  }, { skipAuth: true });
+
+  this.setTokens(data.accessToken, data.refreshToken);
+  localStorage.setItem('buja_user', JSON.stringify(data.user));
+
+  return data;
+}
 
   async logout() {
     try {
