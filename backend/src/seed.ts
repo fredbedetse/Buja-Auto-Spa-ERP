@@ -277,6 +277,15 @@ async function seed() {
     console.log(`✅ Role ${role.displayName} with ${perms.length} permissions`);
   }
 
+  // Deploy tooling: SKIP_DEMO_DATA=1 stops right after roles/permissions, so an
+  // empty Postgres DB receives the auth skeleton ONLY. Real users + business
+  // rows are then imported from a prod snapshot (see DEPLOYMENT.md §12).
+  if (process.env.SKIP_DEMO_DATA) {
+    console.log('SKIP_DEMO_DATA=1: auth skeleton seeded (roles/permissions only); all demo data skipped');
+    await prisma.$disconnect();
+    return;
+  }
+
   // Create default super admin user
   const adminEmail = 'admin@bujaautospa.bi';
   const adminUsername = 'superadmin';

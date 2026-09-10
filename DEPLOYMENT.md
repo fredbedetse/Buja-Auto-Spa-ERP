@@ -108,3 +108,40 @@ Regenerate the baseline after any future schema change that still needs the SQLi
 `cd backend && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/baseline.sql`
 (fresh-clone installs on Postgres still use `prisma migrate deploy`; the baseline is only for the
 one-off "adopt an existing empty Neon DB with legacy git history" situation.)
+
+## 12. Shell-less recovery path: snapshot over the public API (SQLite -> Postgres without Render Shell/Disk)
+
+**Read this first if you cannot attach a Disk or open a Shell on Render.** The deployed app
+itself is the only reliable window into the SQLite file. `POST /api/sync/pull` (already in
+production code, read-only, paginated per entity type) plus a few GET endpoints reconstruct the
+entire business dataset - no server-side changes, no restarts, no deploys required.
+
+Order of operations:
+
+1. **Freeze deploys.** On Render without a persistent disk, ANY deploy rebuilds the container and
+   can wipe `backend/prisma/dev.db` (the path a relative `DATABASE_URL=file:./dev.db` resolves to,
+   relative to the schema directory). Do not push to the Render service until step 7.
+2. Export (from any machine with node, or this workspace):
+   `API_URL=... SNAPSHOT_EMAIL=<admin> SNAPSHOT_PASSWORD=<pw> npx tsx backend/src/scripts/export-snapshot.ts`
+   -> `prod-snapshot.json`. Keep two copies. **This step alone already ends the data-loss emergency.**
+3. Create the empty Neon database; apply baseline + mark 14 migrations applied
+   (`deploy/postgres-cutover.sh` steps 1-3, or run them manually - NOT its step 5, which expects a .db file).
+4. `SKIP_DEMO_DATA=1 npm run db:seed` against Neon -> roles/permissions skeleton only, zero demo rows.
+5. `SNAP=./prod-snapshot.json npx tsx src/scripts/import-json.ts` -> upserts all rows by id
+   (idempotent), wires user roles, prints one-time passwords for users that exist only in the
+   snapshot, and verifies per-table counts.
+6. Re-export a second snapshot and re-run step 5 to capture writes between export and cutover
+   (upsert-by-id makes the refresh convergent and zero-downtime).
+7. Flip Render `DATABASE_URL` to Neon, deploy, smoke logins. Rollback = flip env back (the SQLite
+   file remains untouched in the old container until it is eventually recycled).
+
+Data-completeness matrix for this path:
+
+| Data | Via API snapshot | Notes |
+|---|---|---|
+| Business rows (sales, purchases, washes, maintenance, rentals, expenses, payments, customers, products, suppliers, vehicles, employees) | complete | pull + nested line items |
+| RentalUnits, Payroll runs/items, global AppSettings | complete | gap-fill GETs (admin/manager account required) |
+| User accounts (names, roles, status) | complete | importer issues FRESH passwords |
+| User passwordHashes | NOT exportable | by design; set via `set-user-password.ts` or distribute the printed ones-time |
+| AuditLog history, Sessions | NOT exportable | trail restarts on Postgres; sessions force re-login |
+| Soft-delete tombstones | markers exported, rows intentionally not recreated | deleted invoice numbers can be re-used post-migration |
