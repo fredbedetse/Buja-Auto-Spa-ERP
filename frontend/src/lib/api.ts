@@ -1,5 +1,5 @@
 // API client with offline support and token refresh
-import { getDeviceId } from './device';
+import { getDeviceId, getDeviceIdAndInfo } from './device';
 
 const API_BASE = 'https://buja-auto-spa-backend.onrender.com/api';
 
@@ -183,7 +183,7 @@ class ApiClient {
 
   // Auth methods
   async login(identifier: string, password: string) {
-    const { deviceId, deviceInfo } = await import('./device').then(m => m.getDeviceIdAndInfo());
+    const { deviceId, deviceInfo } = getDeviceIdAndInfo();
     
     const data = await this.post<{
       user: any;
