@@ -84,3 +84,27 @@ your own nginx with the same two rules (proxy /api, no-cache on sw.js).
 `JSON_LOGS=1` (prod default in compose): one JSON object per request
 (`{ts,level,msg:"http",m,u,s,ms,ip}`) - pipe into journald/loki; logrotate or
 `docker compose logs` rotation settings recommended.
+
+## 11. SQLite -> Neon Postgres (one-time cutover, drill-verified)
+
+**Order of operations (never skip step 0):**
+
+0. **Back up first.** Confirm the Render service actually has a persistent **Disk** attached;
+   if `DATABASE_URL` points at a file on the ephemeral filesystem, any redeploy can wipe it.
+   Render -> Service -> Shell: `gzip -c <path>/prod.db | base64 > backup.b64` and store it off-Render.
+1. Pause writes on Render (maintenance mode or scale to 0), take a fresh **copy** of the .db file.
+2. Neon: create an empty database. If earlier deploys hit P3009, its `_prisma_migrations` table may
+   hold `failed` rows - the script's `migrate resolve --applied` pass absorbs them; no manual SQL needed.
+3. From the repo root:
+   `NEON_URL=... PROD_DB=./prod-copy.db CONFIRM=CUTOVER bash deploy/postgres-cutover.sh`
+   The script refuses to run against a target that already contains users, applies
+   `backend/prisma/baseline.sql` (generated from the current schema, checked into git),
+   marks all 14 historical SQLite migrations as applied (the files are never executed
+   on Postgres and never edited), imports every row, and verifies per-table counts plus
+   payroll/sales aggregates before telling you to switch the environment variable.
+4. Set Render `DATABASE_URL` to Neon, restart, smoke-test logins. Rollback = the env var alone.
+
+Regenerate the baseline after any future schema change that still needs the SQLite history:
+`cd backend && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/baseline.sql`
+(fresh-clone installs on Postgres still use `prisma migrate deploy`; the baseline is only for the
+one-off "adopt an existing empty Neon DB with legacy git history" situation.)
