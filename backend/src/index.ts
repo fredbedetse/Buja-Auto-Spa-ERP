@@ -179,30 +179,33 @@ process.on('SIGTERM', shutdown);
 async function start() {
   try {
     const issues = productionConfigIssues();
+
     if (issues.length) {
       console.error('\n❌ Refusing to start in production with unsafe configuration:\n');
       issues.forEach(x => console.error('   • ' + x));
       console.error('\n   (Development mode ignores these guards. See DEPLOYMENT.md.)\n');
       process.exit(1);
     }
-    // Test DB connection
+
     await prisma.$connect();
     console.log('✅ Database connected');
 
     app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
-      console.log(`✅ Server running on http://localhost:${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📚 API Docs: http://localhost:${PORT}/`);
       console.log(`🏥 Health: http://localhost:${PORT}/api/health`);
       console.log('');
+
       if (!ENV.isProd) {
         console.log('🔐 Default credentials:');
         console.log('   Super Admin: admin@bujaautospa.bi / Admin@123456');
         console.log('   Manager: manager@bujaautospa.bi / Manager@123');
         console.log('');
       } else {
-        log('warn', 'production mode: demo credentials banner suppressed - rotate all seeded passwords (deploy docs)');
+        log(
+          'warn',
+          'production mode: demo credentials banner suppressed - rotate all seeded passwords (deploy docs)'
+        );
       }
     });
   } catch (error) {
